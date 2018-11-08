@@ -106,7 +106,7 @@ class SimpleBeanWriter {
 
   private void writeImports() {
     if (beanReader.isLifecycleRequired()) {
-      writer.append("import io.kanuka.core.BeanLifeCycle;").eol();
+      writer.append("import io.kanuka.core.BeanLifecycle;").eol();
     }
     writer.append("import io.kanuka.core.Builder;").eol().eol();
   }
@@ -146,7 +146,7 @@ class SimpleBeanWriter {
   private void writeClassStart() {
     writer.append("public class ").append(shortName).append("$di ");
     if (beanReader.isLifecycleRequired()) {
-      writer.append("implements BeanLifeCycle ");
+      writer.append("implements BeanLifecycle ");
     }
     writer.append(" {").eol().eol();
   }
@@ -159,9 +159,9 @@ class SimpleBeanWriter {
 
 //  package coffee;
 //
-//import io.kanuka.core.BeanLifeCycle;
+//import io.kanuka.core.BeanLifecycle;
 //
-//  public class CoffeeMaker$k implements BeanLifeCycle {
+//  public class CoffeeMaker$k implements BeanLifecycle {
 //
 //    private final CoffeeMaker bean;
 //
