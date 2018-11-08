@@ -23,6 +23,10 @@ class ProcessingContext {
 
   private final Filer filer;
 
+  private String contextName;
+
+  private String[] contextDependsOn;
+
   ProcessingContext(ProcessingEnvironment processingEnv) {
     this.processingEnv = processingEnv;
     this.messager = processingEnv.getMessager();
@@ -81,5 +85,18 @@ class ProcessingContext {
    */
   FileObject createMetaInfWriter() throws IOException {
     return filer.createResource(StandardLocation.CLASS_OUTPUT, "", "META-INF/services/io.kanuka.core.BeanContextFactory");
+  }
+
+  void setContextDetails(String name, String[] dependsOn) {
+    this.contextName = name;
+    this.contextDependsOn = dependsOn;
+  }
+
+  public String getContextName() {
+    return contextName;
+  }
+
+  public String[] getContextDependsOn() {
+    return contextDependsOn;
   }
 }

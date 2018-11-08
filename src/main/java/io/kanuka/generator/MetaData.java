@@ -75,9 +75,30 @@ class MetaData {
     return dependsOn;
   }
 
-  String getPackage() {
-    int pos = type.lastIndexOf('.');
-    return (pos == -1) ? "" : type.substring(0, pos);
+  /**
+   * Return the top level package for the bean and the interfaces it implements.
+   */
+  String getTopPackage() {
+    String topPackage = trimPackage(type);
+    for (String interfaceCls : provides) {
+      String interfacePackage = trimPackage(interfaceCls);
+      if (higherPackage(interfacePackage, topPackage)) {
+        topPackage = interfacePackage;
+      }
+    }
+    return topPackage;
+  }
+
+  private boolean higherPackage(String interfacePackage, String topPackage) {
+    if (interfacePackage.length() > topPackage.length()){
+      return false;
+    }
+    return topPackage.startsWith(interfacePackage);
+  }
+
+  private String trimPackage(String cls) {
+    int pos = cls.lastIndexOf('.');
+    return (pos == -1) ? "" : cls.substring(0, pos);
   }
 
   String getShortType() {

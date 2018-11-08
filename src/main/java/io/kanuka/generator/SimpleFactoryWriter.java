@@ -16,6 +16,7 @@ class SimpleFactoryWriter {
   private final String factoryPackage;
   private final String factoryShortName;
   private final String factoryFullName;
+  private final String contextName;
 
   private Append writer;
 
@@ -24,8 +25,14 @@ class SimpleFactoryWriter {
     this.processingContext = processingContext;
 
     this.factoryPackage = ordering.getTopPackage();
+    this.contextName = deriveContextName();
     this.factoryShortName = "_di$Factory";
     this.factoryFullName = factoryPackage + "." + factoryShortName;
+  }
+
+  private String deriveContextName() {
+    String name = processingContext.getContextName();
+    return (name != null) ? name : factoryPackage;
   }
 
   void write() throws IOException {
@@ -85,6 +92,7 @@ class SimpleFactoryWriter {
     writer.append("package %s;", factoryPackage).eol().eol();
 
     writer.append("import io.kanuka.BeanContext;").eol();
+    writer.append("import io.kanuka.ContextModule;").eol();
     writer.append("import io.kanuka.core.BeanContextFactory;").eol();
     writer.append("import io.kanuka.core.BuilderFactory;").eol();
     writer.append("import io.kanuka.core.Builder;").eol();
@@ -94,17 +102,48 @@ class SimpleFactoryWriter {
 
   private void writeStartClass() {
 
+    String dependsAnnotation = "";
+    String dependsBuilder = "";
+
+    String dependsOn = moduleDependsOn();
+    if (dependsOn != null) {
+      dependsAnnotation = " ,dependsOn = {" + dependsOn + "}";
+      dependsBuilder = "," + dependsOn;
+    }
+
+    writer.append("@ContextModule(name=\"%s\"%s)", contextName, dependsAnnotation).eol();
     writer.append("public class %s implements BeanContextFactory {", factoryShortName).eol().eol();
     writer.append("  private final Builder builder;").eol().eol();
 
     writer.append("  public %s() {", factoryShortName).eol();
-    writer.append("    this.builder = BuilderFactory.newBuilder(\"coffee\");").eol();
+    writer.append("    this.builder = BuilderFactory.newBuilder(\"%s\"%s);", contextName, dependsBuilder).eol();
     writer.append("  }").eol().eol();
 
     writer.append("  @Override").eol();
-    writer.append("  public String name() {").eol();
+    writer.append("  public String getName() {").eol();
     writer.append("    return builder.getName();").eol();
     writer.append("  }").eol().eol();
+
+    writer.append("  @Override").eol();
+    writer.append("  public String[] getDependsOn() {").eol();
+    writer.append("    return builder.getDependsOn();").eol();
+    writer.append("  }").eol().eol();
+  }
+
+  private String moduleDependsOn() {
+    String[] contextDependsOn = processingContext.getContextDependsOn();
+    if (contextDependsOn == null || contextDependsOn.length == 0) {
+      return null;
+    }
+    StringBuilder dependsOn = new StringBuilder();
+    int c = 0;
+    for (String moduleDependency : contextDependsOn) {
+      if (c > 0) {
+        dependsOn.append(",");
+      }
+      dependsOn.append("\"").append(moduleDependency).append("\"");
+    }
+    return dependsOn.toString();
   }
 
   private void writeEndClass() {

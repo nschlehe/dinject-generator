@@ -176,18 +176,6 @@ public class Processor extends AbstractProcessor {
    */
   private void readModule(RoundEnvironment roundEnv) {
 
-    Set<? extends Element> elementsAnnotatedWith = roundEnv.getElementsAnnotatedWith(ContextModule.class);
-    if (!elementsAnnotatedWith.isEmpty()) {
-      Iterator<? extends Element> iterator = elementsAnnotatedWith.iterator();
-      if (iterator.hasNext()) {
-        Element element = iterator.next();
-        ContextModule annotation = element.getAnnotation(ContextModule.class);
-        if (annotation != null) {
-          processingContext.logNote("module name: " + annotation.name() + " dependsOn:" + Arrays.toString(annotation.dependsOn()));
-        }
-      }
-    }
-
     String factory = processingContext.loadMetaInfServices();
     if (factory == null) {
       processingContext.logNote("no factory type found");
@@ -198,6 +186,18 @@ public class Processor extends AbstractProcessor {
         readFactory(factoryType);
       }
     }
+
+    Set<? extends Element> elementsAnnotatedWith = roundEnv.getElementsAnnotatedWith(ContextModule.class);
+    if (!elementsAnnotatedWith.isEmpty()) {
+      Iterator<? extends Element> iterator = elementsAnnotatedWith.iterator();
+      if (iterator.hasNext()) {
+        Element element = iterator.next();
+        ContextModule annotation = element.getAnnotation(ContextModule.class);
+        if (annotation != null) {
+          processingContext.setContextDetails(annotation.name(), annotation.dependsOn());
+        }
+      }
+    }
   }
 
 
@@ -206,6 +206,9 @@ public class Processor extends AbstractProcessor {
    * which holds the information we need (to regenerate the factory with any changes).
    */
   private void readFactory(TypeElement factoryType) {
+
+    ContextModule module = factoryType.getAnnotation(ContextModule.class);
+    processingContext.setContextDetails(module.name(), module.dependsOn());
 
     List<? extends Element> elements = factoryType.getEnclosedElements();
     if (elements != null) {

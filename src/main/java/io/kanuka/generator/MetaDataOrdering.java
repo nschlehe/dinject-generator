@@ -27,7 +27,7 @@ class MetaDataOrdering {
         queue.add(metaData);
       }
       // register into map keyed by provider
-      String aPackage = metaData.getPackage();
+      String aPackage = metaData.getTopPackage();
       if (topPackage == null || aPackage.length() < topPackage.length()) {
         topPackage = aPackage;
       }
