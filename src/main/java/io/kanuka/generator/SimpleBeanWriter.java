@@ -101,6 +101,21 @@ class SimpleBeanWriter {
       //builder.addLifecycle(new CoffeeMaker$di(bean));
       writer.append("    builder.addLifecycle(new %s$di(bean));", shortName).eol();
     }
+    if (beanReader.isFieldInjectionRequired()) {
+      writer.append("    builder.addInjector(b -> {").eol();
+      List<FieldReader> injectFields = beanReader.getInjectFields();
+      for (FieldReader fieldReader : injectFields) {
+        String fieldName = fieldReader.getFieldName();
+        String getDependency = fieldReader.builderGetDependency();
+        writer.append("      bean.%s = %s;", fieldName, getDependency).eol();
+      }
+      writer.append("    });").eol();
+
+//      builder.addInjector(b -> {
+//        bean.bMusher = b.get(BMusher.class);
+//      });
+
+    }
     writer.append("  }").eol().eol();
   }
 

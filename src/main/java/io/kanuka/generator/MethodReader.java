@@ -18,7 +18,6 @@ class MethodReader {
   }
 
   void read() {
-
     List<? extends VariableElement> ps = element.getParameters();
     for (VariableElement p : ps) {
       params.add(new MethodParam(p.asType(), readNamed(p)));
@@ -44,20 +43,12 @@ class MethodReader {
     MethodParam(TypeMirror type, String named) {
       this.rawType = type.toString();
       this.named = named;
-      this.optional = isOptional(rawType);
+      this.optional = Util.isOptional(rawType);
       if (optional) {
-        paramType = extractOptionalType(rawType);
+        paramType = Util.extractOptionalType(rawType);
       } else {
         paramType = rawType;
       }
-    }
-
-    private String extractOptionalType(String rawType) {
-      return rawType.substring(19, rawType.length() - 1);
-    }
-
-    private boolean isOptional(String rawType) {
-      return rawType.startsWith("java.util.Optional<");
     }
 
     String builderGetDependency() {

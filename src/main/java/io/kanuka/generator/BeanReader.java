@@ -29,7 +29,7 @@ class BeanReader {
 
   private Element preDestroyMethod;
 
-//  private final List<Element> injectFields = new ArrayList<>();
+  private final List<FieldReader> injectFields = new ArrayList<>();
 
   BeanReader(TypeElement beanType, ProcessingContext processingContext) {
     this.beanType = beanType;
@@ -53,9 +53,9 @@ class BeanReader {
     return preDestroyMethod;
   }
 
-//  List<Element> getInjectFields() {
-//    return injectFields;
-//  }
+  List<FieldReader> getInjectFields() {
+    return injectFields;
+  }
 
   void read() {
 
@@ -70,9 +70,9 @@ class BeanReader {
         case CONSTRUCTOR:
           readConstructor(element);
           break;
-//        case FIELD:
-//          readField(element);
-//          break;
+        case FIELD:
+          readField(element);
+          break;
         case METHOD:
           readMethod(element);
           break;
@@ -161,13 +161,12 @@ class BeanReader {
     }
   }
 
-
-//  private void readField(Element element) {
-//    Inject inject = element.getAnnotation(Inject.class);
-//    if (inject != null) {
-//      injectFields.add(element);
-//    }
-//  }
+  private void readField(Element element) {
+    Inject inject = element.getAnnotation(Inject.class);
+    if (inject != null) {
+      injectFields.add(new FieldReader(element));
+    }
+  }
 
   private void readMethod(Element element) {
 
@@ -207,5 +206,7 @@ class BeanReader {
     return null;
   }
 
-
+  boolean isFieldInjectionRequired() {
+    return !injectFields.isEmpty();
+  }
 }
