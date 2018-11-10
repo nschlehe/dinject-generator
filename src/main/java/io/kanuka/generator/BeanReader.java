@@ -1,5 +1,7 @@
 package io.kanuka.generator;
 
+import io.kanuka.Bean;
+
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
@@ -11,6 +13,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 class BeanReader {
@@ -24,6 +27,8 @@ class BeanReader {
   private MethodReader injectConstructor;
 
   private final List<MethodReader> otherConstructors = new ArrayList<>();
+
+  private List<MethodReader> factoryMethods = new ArrayList<>();
 
   private Element postConstructMethod;
 
@@ -57,10 +62,7 @@ class BeanReader {
     return injectFields;
   }
 
-  void read() {
-
-    String beanFullName = beanType.getQualifiedName().toString();
-    processingContext.logNote("read bean [" + beanFullName + "]");
+  void read(boolean factory) {
 
     readNamed();
 
@@ -74,7 +76,7 @@ class BeanReader {
           readField(element);
           break;
         case METHOD:
-          readMethod(element);
+          readMethod(element, factory);
           break;
       }
     }
@@ -94,6 +96,10 @@ class BeanReader {
     }
 
     return list;
+  }
+
+  List<MethodReader> getFactoryMethods() {
+    return factoryMethods;
   }
 
   List<String> getInterfaces() {
@@ -141,23 +147,16 @@ class BeanReader {
 
   private void readConstructor(Element element) {
 
-    try {
+    ExecutableElement ex = (ExecutableElement) element;
 
-      ExecutableElement ex = (ExecutableElement) element;
+    MethodReader methodReader = new MethodReader(ex, beanType);
+    methodReader.read();
 
-      MethodReader methodReader = new MethodReader(ex);
-      methodReader.read();
-
-      Inject inject = element.getAnnotation(Inject.class);
-      processingContext.logNote("readConstructor " + element.getSimpleName() + " " + element + " inject:" + (inject != null));
-      if (inject != null) {
-        injectConstructor = methodReader;
-      } else {
-        otherConstructors.add(methodReader);
-      }
-
-    } catch (Exception e) {
-      processingContext.logNote("readConstructor Exception: " + e);
+    Inject inject = element.getAnnotation(Inject.class);
+    if (inject != null) {
+      injectConstructor = methodReader;
+    } else {
+      otherConstructors.add(methodReader);
     }
   }
 
@@ -168,7 +167,17 @@ class BeanReader {
     }
   }
 
-  private void readMethod(Element element) {
+  private void readMethod(Element element, boolean factory) {
+
+    if (factory) {
+      Bean beanMarker = element.getAnnotation(Bean.class);
+      if (beanMarker != null) {
+        ExecutableElement ex = (ExecutableElement) element;
+        MethodReader methodReader = new MethodReader(ex, beanType);
+        methodReader.read();
+        factoryMethods.add(methodReader);
+      }
+    }
 
     PostConstruct pcMarker = element.getAnnotation(PostConstruct.class);
     if (pcMarker != null) {
@@ -188,6 +197,18 @@ class BeanReader {
 
   boolean isLifecycleRequired() {
     return postConstructMethod != null || preDestroyMethod != null;
+  }
+
+  List<MetaData> createFactoryMethodMeta() {
+    if (factoryMethods.isEmpty()) {
+      return Collections.EMPTY_LIST;
+    }
+
+    List<MetaData> metaList = new ArrayList<>(factoryMethods.size());
+    for (MethodReader factoryMethod : factoryMethods) {
+      metaList.add(factoryMethod.createMeta());
+    }
+    return metaList;
   }
 
   MetaData createMeta() {

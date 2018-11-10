@@ -15,6 +15,8 @@ class MetaData {
 
   private final String type;
 
+  private String method;
+
   private boolean wired;
 
   /**
@@ -29,6 +31,7 @@ class MetaData {
 
   MetaData(DependencyMeta meta) {
     this.type = meta.type();
+    this.method = meta.method();
     this.provides = asList(meta.provides());
     this.dependsOn = asList(meta.dependsOn());
   }
@@ -110,6 +113,9 @@ class MetaData {
 
     StringBuilder sb = new StringBuilder(200);
     sb.append("  @DependencyMeta(type=\"").append(type).append("\"");
+    if (method != null && !method.isEmpty()) {
+      sb.append(", method=\"").append(method).append("\"");
+    }
     if (!provides.isEmpty()) {
       appendProvides(sb, "provides", provides);
     }
@@ -119,7 +125,11 @@ class MetaData {
     sb.append(")").append(NEWLINE);
 
     sb.append("  protected void build").append(getShortType()).append("() {").append(NEWLINE);
-    sb.append("    ").append(type).append("$di.build(builder);").append(NEWLINE);
+    if (method == null || method.isEmpty()) {
+      sb.append("    ").append(type).append("$di.build(builder);").append(NEWLINE);
+    } else {
+      sb.append("    ").append(method).append("(builder);").append(NEWLINE);
+    }
     sb.append("  }").append(NEWLINE);
 
     return sb.toString();
@@ -141,6 +151,18 @@ class MetaData {
       sb.append("\"");
     }
     sb.append("}");
-
   }
+
+  void setProvides(List<String> provides) {
+    this.provides = provides;
+  }
+
+  void setDependsOn(List<String> dependsOn) {
+    this.dependsOn = dependsOn;
+  }
+
+  void setMethod(String method) {
+    this.method = method;
+  }
+
 }

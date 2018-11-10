@@ -1,6 +1,7 @@
 package io.kanuka.generator;
 
 import io.kanuka.ContextModule;
+import io.kanuka.Factory;
 import io.kanuka.core.DependencyMeta;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -15,7 +16,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -48,6 +48,7 @@ public class Processor extends AbstractProcessor {
 
     Set<String> annotations = new LinkedHashSet<>();
     annotations.add(ContextModule.class.getCanonicalName());
+    annotations.add(Factory.class.getCanonicalName());
     annotations.add(Singleton.class.getCanonicalName());
     return annotations;
   }
@@ -60,23 +61,21 @@ public class Processor extends AbstractProcessor {
   @Override
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 
+    Set<? extends Element> factoryBeans = roundEnv.getElementsAnnotatedWith(Factory.class);
     Set<? extends Element> beans = roundEnv.getElementsAnnotatedWith(Singleton.class);
-    if (beans.isEmpty()) {
-      processingContext.logNote("skip, no changed beans ...");
+    if (beans.isEmpty() && factoryBeans.isEmpty()) {
+      processingContext.logDebug("skip, no changed beans ...");
       return false;
     }
 
-    processingContext.logNote("start ...");
-
     readModule(roundEnv);
-    readChangedBeans(beans);
+    readChangedBeans(factoryBeans, true);
+    readChangedBeans(beans, false);
 
     mergeMetaData();
 
     writeBeanHelpers();
     writeBeanFactory();
-
-    processingContext.logNote("end - metaDataList:" + metaData.size() + " beanReaders: " + beanReaders.size());
 
     return false;
   }
@@ -95,35 +94,30 @@ public class Processor extends AbstractProcessor {
 
   private void writeBeanFactory() {
 
-    MetaDataOrdering ordering = new MetaDataOrdering(metaData.values());
+    MetaDataOrdering ordering = new MetaDataOrdering(metaData.values(), processingContext);
     int remaining = ordering.processQueue();
     if (remaining > 0) {
-      processingContext.logNote("there are " + remaining + " beans with unsatisfied dependencies (assuming external dependencies)");
-    }
-
-    for (MetaData data : ordering.getOrdered()) {
-      processingContext.logNote("ordered " + data.getType() + " " + data.getProvides() + " " + data.getDependsOn());
+      processingContext.logWarn("there are " + remaining + " beans with unsatisfied dependencies (assuming external dependencies)");
+      ordering.warnOnDependencies();
     }
 
     try {
       SimpleFactoryWriter factoryWriter = new SimpleFactoryWriter(ordering, processingContext);
       factoryWriter.write();
     } catch (IOException e) {
-      processingContext.logError(null, "Failed to write factory " + e.getMessage());
+      processingContext.logError("Failed to write factory " + e.getMessage());
     }
-
   }
-
 
   /**
    * Read the beans that have changed.
    */
-  private void readChangedBeans(Set<? extends Element> beans) {
+  private void readChangedBeans(Set<? extends Element> beans, boolean factory) {
     for (Element element : beans) {
       if (!(element instanceof TypeElement)) {
-        processingContext.logNote("unexpected type [" + element + "]");
+        processingContext.logError("unexpected type [" + element + "]");
       } else {
-        readBeanMeta((TypeElement) element);
+        readBeanMeta((TypeElement) element, factory);
       }
     }
   }
@@ -151,6 +145,9 @@ public class Processor extends AbstractProcessor {
   private void addMeta(BeanReader beanReader) {
     MetaData meta = beanReader.createMeta();
     metaData.put(meta.getType(), meta);
+    for (MetaData methodMeta : beanReader.createFactoryMethodMeta()) {
+      metaData.put(methodMeta.getType(), methodMeta);
+    }
   }
 
   /**
@@ -158,16 +155,14 @@ public class Processor extends AbstractProcessor {
    */
   private void updateMeta(MetaData metaData, BeanReader beanReader) {
     metaData.update(beanReader);
-    processingContext.logNote("end - metaDataList:" + this.metaData.size() + " beanReaders: " + beanReaders.size());
   }
 
   /**
    * Read the dependency injection meta data for the given bean.
    */
-  private void readBeanMeta(TypeElement typeElement) {
-
+  private void readBeanMeta(TypeElement typeElement, boolean factory) {
     BeanReader beanReader = new BeanReader(typeElement, processingContext);
-    beanReader.read();
+    beanReader.read(factory);
     beanReaders.add(beanReader);
   }
 
@@ -177,10 +172,7 @@ public class Processor extends AbstractProcessor {
   private void readModule(RoundEnvironment roundEnv) {
 
     String factory = processingContext.loadMetaInfServices();
-    if (factory == null) {
-      processingContext.logNote("no factory type found");
-
-    } else {
+    if (factory != null) {
       TypeElement factoryType = elementUtils.getTypeElement(factory);
       if (factoryType != null) {
         readFactory(factoryType);
@@ -212,7 +204,6 @@ public class Processor extends AbstractProcessor {
 
     List<? extends Element> elements = factoryType.getEnclosedElements();
     if (elements != null) {
-      processingContext.logNote("reading factory " + factoryType.getSimpleName().toString());
       for (Element element : elements) {
         ElementKind kind = element.getKind();
         if (ElementKind.METHOD == kind) {
@@ -222,7 +213,7 @@ public class Processor extends AbstractProcessor {
             // read a build method - DependencyMeta
             DependencyMeta meta = element.getAnnotation(DependencyMeta.class);
             if (meta == null) {
-              processingContext.logError(null, "Missing @DependencyMeta on method " + simpleName.toString());
+              processingContext.logError("Missing @DependencyMeta on method " + simpleName.toString());
             } else {
               metaData.put(meta.type(), new MetaData(meta));
             }

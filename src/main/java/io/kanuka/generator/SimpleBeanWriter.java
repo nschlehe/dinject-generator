@@ -34,8 +34,6 @@ class SimpleBeanWriter {
     shortName = origin.getSimpleName().toString();
     String fullName = originName + "$di";
 
-    processingContext.logNote("write " + fullName);
-
     int dp = originName.lastIndexOf('.');
     if (dp > -1) {
       packageName = originName.substring(0, dp);
@@ -52,12 +50,29 @@ class SimpleBeanWriter {
     writeImports();
     writeClassStart();
     writeStaticFactoryMethod();
+    writeStaticFactoryBeanMethods();
 
     writeConstructor();
     writeLifecycleMethods();
     writeClassEnd();
 
     writer.close();
+  }
+
+  private void writeStaticFactoryBeanMethods() {
+    List<MethodReader> factoryMethods = beanReader.getFactoryMethods();
+    for (MethodReader factoryMethod : factoryMethods) {
+      writeFactoryBeanMethod(factoryMethod);
+    }
+  }
+
+  private void writeFactoryBeanMethod(MethodReader method) {
+    writer.append("  public static void build_%s(Builder builder) {", method.getName()).eol();
+    writer.append(method.builderDebugCurrentMethod()).eol();
+    writer.append(method.builderGetFactory()).eol();
+    writer.append(method.builderBuildBean()).eol();
+    writer.append("    builder.addBean(bean, null);").eol();
+    writer.append("  }").eol();
   }
 
   private void writeStaticFactoryMethod() {

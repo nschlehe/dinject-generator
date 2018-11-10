@@ -9,6 +9,8 @@ import java.util.Map;
 
 class MetaDataOrdering {
 
+  private final ProcessingContext processingContext;
+
   private final List<MetaData> orderedList = new ArrayList<>();
 
   private final List<MetaData> queue = new ArrayList<>();
@@ -17,7 +19,8 @@ class MetaDataOrdering {
 
   private String topPackage;
 
-  MetaDataOrdering(Collection<MetaData> values) {
+  MetaDataOrdering(Collection<MetaData> values, ProcessingContext processingContext) {
+    this.processingContext = processingContext;
 
     for (MetaData metaData : values) {
       if (metaData.noDepends()) {
@@ -53,6 +56,12 @@ class MetaDataOrdering {
       orderedList.addAll(queue);
     }
     return remaining;
+  }
+
+  void warnOnDependencies() {
+    for (MetaData m : queue) {
+      processingContext.logWarn("unsatisfied dependencies on %s dependsOn %s", m.getType(), m.getDependsOn());
+    }
   }
 
   String getTopPackage() {

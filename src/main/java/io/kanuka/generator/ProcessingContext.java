@@ -40,11 +40,15 @@ class ProcessingContext {
     messager.printMessage(Diagnostic.Kind.ERROR, String.format(msg, args), e);
   }
 
-  /**
-   * Log a info message.
-   */
-  void logNote(String msg, Object... args) {
-    //System.out.println("kanuka>> " + String.format(msg, args));
+  void logError(String msg, Object... args) {
+    messager.printMessage(Diagnostic.Kind.ERROR, String.format(msg, args));
+  }
+
+  void logWarn(String msg, Object... args) {
+    messager.printMessage(Diagnostic.Kind.WARNING, String.format(msg, args));
+  }
+
+  void logDebug(String msg, Object... args) {
     messager.printMessage(Diagnostic.Kind.NOTE, String.format(msg, args));
   }
 
@@ -52,22 +56,20 @@ class ProcessingContext {
     try {
       FileObject fileObject = processingEnv.getFiler().getResource(StandardLocation.CLASS_OUTPUT, "", META_INF_FACTORY);
       if (fileObject != null) {
-
         Reader reader = fileObject.openReader(true);
         LineNumberReader lineReader = new LineNumberReader(reader);
         String line = lineReader.readLine();
         if (line != null) {
-          logNote("read meta-inf services: " + line);
           return line.trim();
         }
       }
 
     } catch (FileNotFoundException e) {
-      logNote("no services file yet");
+      logDebug("no services file yet");
 
     } catch (IOException e) {
       e.printStackTrace();
-      logError(null, "Error reading services file: "+e.getMessage());
+      logError("Error reading services file: "+e.getMessage());
     }
     return null;
 

@@ -56,14 +56,13 @@ class SimpleFactoryWriter {
       FileObject jfo = processingContext.createMetaInfWriter();
       if (jfo != null) {
         Writer writer = jfo.openWriter();
-        processingContext.logNote("writing services file for " + factoryFullName);
         writer.write(factoryFullName);
         writer.close();
       }
 
     } catch (IOException e) {
       e.printStackTrace();
-      processingContext.logError(null, "Failed to write services file " + e.getMessage());
+      processingContext.logError("Failed to write services file " + e.getMessage());
     }
 
   }
@@ -151,8 +150,6 @@ class SimpleFactoryWriter {
   }
 
   private Writer createFileWriter() throws IOException {
-
-    processingContext.logNote("write " + factoryFullName);
     JavaFileObject jfo = processingContext.createWriter(factoryFullName, null);
     return jfo.openWriter();
   }
