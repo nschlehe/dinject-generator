@@ -20,8 +20,6 @@ class BeanReader {
 
   private final TypeElement beanType;
 
-  private final ProcessingContext processingContext;
-
   private String name;
 
   private MethodReader injectConstructor;
@@ -34,11 +32,28 @@ class BeanReader {
 
   private Element preDestroyMethod;
 
+  private String providerParamType;
+
   private final List<FieldReader> injectFields = new ArrayList<>();
 
-  BeanReader(TypeElement beanType, ProcessingContext processingContext) {
+  private final List<String> interfaceTypes = new ArrayList<>();
+
+  BeanReader(TypeElement beanType) {
     this.beanType = beanType;
-    this.processingContext = processingContext;
+    initInterfaces();
+  }
+
+  private void initInterfaces() {
+    for (TypeMirror anInterface : beanType.getInterfaces()) {
+      interfaceTypes.add(checkProvider(anInterface.toString()));
+    }
+  }
+
+  private String checkProvider(String interfaceType) {
+    if (Util.isProvider(interfaceType)) {
+      this.providerParamType = Util.extractProviderType(interfaceType);
+    }
+    return interfaceType;
   }
 
   TypeElement getBeanType() {
@@ -48,7 +63,6 @@ class BeanReader {
   String getName() {
     return name;
   }
-
 
   Element getPostConstructMethod() {
     return postConstructMethod;
@@ -103,14 +117,7 @@ class BeanReader {
   }
 
   List<String> getInterfaces() {
-
-    List<? extends TypeMirror> interfaces = beanType.getInterfaces();
-
-    List<String> list = new ArrayList<>(interfaces.size());
-    for (TypeMirror anInterface : interfaces) {
-      list.add(anInterface.toString());
-    }
-    return list;
+    return interfaceTypes;
   }
 
   String getInterfacesAndAnnotations() {
@@ -169,14 +176,15 @@ class BeanReader {
 
   private void readMethod(Element element, boolean factory) {
 
+    ExecutableElement methodElement = (ExecutableElement) element;
     if (factory) {
       Bean beanMarker = element.getAnnotation(Bean.class);
       if (beanMarker != null) {
-        ExecutableElement ex = (ExecutableElement) element;
-        MethodReader methodReader = new MethodReader(ex, beanType);
-        methodReader.read();
-        factoryMethods.add(methodReader);
+        addFactoryMethod(methodElement);
       }
+    }
+    if (providerParamType != null && isProviderMethod(methodElement)) {
+      addFactoryMethod(methodElement);
     }
 
     PostConstruct pcMarker = element.getAnnotation(PostConstruct.class);
@@ -188,7 +196,17 @@ class BeanReader {
     if (pdMarker != null) {
       preDestroyMethod = element;
     }
+  }
 
+  private void addFactoryMethod(ExecutableElement methodElement) {
+    MethodReader methodReader = new MethodReader(methodElement, beanType);
+    methodReader.read();
+    factoryMethods.add(methodReader);
+  }
+
+  private boolean isProviderMethod(ExecutableElement methodElement) {
+    return providerParamType.equals(methodElement.getReturnType().toString())
+      && "get".equals(methodElement.getSimpleName().toString());
   }
 
   String getSimpleName() {
@@ -201,7 +219,7 @@ class BeanReader {
 
   List<MetaData> createFactoryMethodMeta() {
     if (factoryMethods.isEmpty()) {
-      return Collections.EMPTY_LIST;
+      return Collections.emptyList();
     }
 
     List<MetaData> metaList = new ArrayList<>(factoryMethods.size());

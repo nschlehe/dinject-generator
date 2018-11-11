@@ -161,7 +161,7 @@ public class Processor extends AbstractProcessor {
    * Read the dependency injection meta data for the given bean.
    */
   private void readBeanMeta(TypeElement typeElement, boolean factory) {
-    BeanReader beanReader = new BeanReader(typeElement, processingContext);
+    BeanReader beanReader = new BeanReader(typeElement);
     beanReader.read(factory);
     beanReaders.add(beanReader);
   }
