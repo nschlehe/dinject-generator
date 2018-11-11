@@ -1,11 +1,13 @@
 package io.kanuka.generator;
 
 import io.kanuka.Bean;
+import io.kanuka.Factory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.inject.Singleton;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -141,8 +143,9 @@ class BeanReader {
   }
 
   private boolean includeAnnotation(String annotationType) {
-    return !"javax.inject.Singleton".equals(annotationType)
-      && !"javax.inject.Named".equals(annotationType);
+    return !Singleton.class.getName().equals(annotationType)
+      && !Named.class.getName().equals(annotationType)
+      && !Factory.class.getName().equals(annotationType);
   }
 
   private void readNamed() {
