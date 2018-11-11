@@ -62,15 +62,12 @@ class MethodReader {
   }
 
   String builderGetFactory() {
-
-    //    org.example.coffee.factory.Configuration factory = builder.get(org.example.coffee.factory.Configuration.class);
     return String.format("      %s factory = builder.get(%s.class);", factoryType, factoryType);
   }
 
   String builderBuildBean() {
-    //    AFact bean = factory.buildA();
-    String methodName = element.getSimpleName().toString();
 
+    String methodName = element.getSimpleName().toString();
     StringBuilder sb = new StringBuilder();
     sb.append(String.format("      %s bean = factory.%s(", returnTypeRaw, methodName));
 
@@ -101,15 +98,19 @@ class MethodReader {
 
     private final String rawType;
     private final String named;
-    private final boolean optional;
+    private final boolean listType;
+    private final boolean optionalType;
     private final String paramType;
 
     MethodParam(TypeMirror type, String named) {
       this.rawType = type.toString();
       this.named = named;
-      this.optional = Util.isOptional(rawType);
-      if (optional) {
+      this.listType = Util.isList(rawType);
+      this.optionalType = !listType && Util.isOptional(rawType);
+      if (optionalType) {
         paramType = Util.extractOptionalType(rawType);
+      } else if (listType) {
+        paramType = Util.extractList(rawType);
       } else {
         paramType = rawType;
       }
@@ -117,17 +118,16 @@ class MethodReader {
 
     String builderGetDependency() {
       StringBuilder sb = new StringBuilder();
-      if (optional) {
+      if (listType) {
+        sb.append("builder.getList(");
+      } else if (optionalType) {
         sb.append("builder.getOptional(");
       } else {
         sb.append("builder.get(");
       }
 
-      //coffee.Heater.class
       sb.append(paramType).append(".class");
-
       if (named != null) {
-        // , "electric")
         sb.append(",\"").append(named).append("\"");
       }
       sb.append(")");

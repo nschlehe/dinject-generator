@@ -10,6 +10,14 @@ class Util {
     return rawType.startsWith("java.util.Optional<");
   }
 
+  static String extractList(String rawType) {
+    return rawType.substring(15, rawType.length() - 1);
+  }
+
+  static boolean isList(String rawType) {
+    return rawType.startsWith("java.util.List<");
+  }
+
   static boolean isProvider(String rawType) {
     return rawType.startsWith("javax.inject.Provider<");
   }

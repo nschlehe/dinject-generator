@@ -28,13 +28,19 @@ class FieldReader {
 
     TypeMirror type = element.asType();
     String rawType = type.toString();
-    boolean optional = Util.isOptional(rawType);
-    if (optional) {
+
+    boolean listType = Util.isList(rawType);
+    boolean optionalType = !listType && Util.isOptional(rawType);
+    if (optionalType) {
       rawType = Util.extractOptionalType(rawType);
+    } else if (listType) {
+      rawType = Util.extractList(rawType);
     }
 
     StringBuilder sb = new StringBuilder();
-    if (optional) {
+    if (listType) {
+      sb.append("b.getList(");
+    } else if (optionalType) {
       sb.append("b.getOptional(");
     } else {
       sb.append("b.get(");
