@@ -68,11 +68,14 @@ class SimpleBeanWriter {
 
   private void writeFactoryBeanMethod(MethodReader method) {
     writer.append("  public static void build_%s(Builder builder) {", method.getName()).eol();
+    String addFor = method.getIsAddBeanFor();
+    writer.append("    if (builder.isAddBeanFor(\"%s\")) {", addFor).eol();
     writer.append(method.builderDebugCurrentMethod()).eol();
     writer.append(method.builderGetFactory()).eol();
     writer.append(method.builderBuildBean()).eol();
-    writer.append("    builder.addBean(bean, null);").eol();
-    writer.append("  }").eol();
+    writer.append("      builder.addBean(bean, null);").eol();
+    writer.append("    }").eol();
+    writer.append("  }").eol().eol();
   }
 
   private void writeStaticFactoryMethod() {
@@ -84,10 +87,13 @@ class SimpleBeanWriter {
     }
 
     writer.append("  public static void build(Builder builder) {").eol();
-    writer.append("    builder.currentBean(\"%s\");", originName).eol();
+
+    String addFor = beanReader.getIsAddBeanFor();
+    writer.append("    if (builder.isAddBeanFor(\"%s\")) {", addFor).eol();
+    writer.append("      builder.currentBean(\"%s\");", originName).eol();
 
     // CoffeeMaker bean = new CoffeeMaker(builder.get(Heater.class, "electric"), builder.get(Pump.class));
-    writer.append("    %s bean = new %s(", originName, originName);
+    writer.append("      %s bean = new %s(", originName, originName);
 
     // add constructor dependencies
     List<MethodReader.MethodParam> params = constructor.getParams();
@@ -97,11 +103,10 @@ class SimpleBeanWriter {
       }
       writer.append(params.get(i).builderGetDependency());
     }
-
     writer.append(");").eol();
 
     //builder.addBean(bean, null, "coffee.Controller");
-    writer.append("    builder.addBean(bean, ");
+    writer.append("      builder.addBean(bean, ");
     String name = beanReader.getName();
     if (name == null) {
       writer.append("null");
@@ -114,23 +119,19 @@ class SimpleBeanWriter {
 
     if (beanReader.isLifecycleRequired()) {
       //builder.addLifecycle(new CoffeeMaker$di(bean));
-      writer.append("    builder.addLifecycle(new %s$di(bean));", shortName).eol();
+      writer.append("      builder.addLifecycle(new %s$di(bean));", shortName).eol();
     }
     if (beanReader.isFieldInjectionRequired()) {
-      writer.append("    builder.addInjector(b -> {").eol();
+      writer.append("      builder.addInjector(b -> {").eol();
       List<FieldReader> injectFields = beanReader.getInjectFields();
       for (FieldReader fieldReader : injectFields) {
         String fieldName = fieldReader.getFieldName();
         String getDependency = fieldReader.builderGetDependency();
-        writer.append("      bean.%s = %s;", fieldName, getDependency).eol();
+        writer.append("        bean.%s = %s;", fieldName, getDependency).eol();
       }
-      writer.append("    });").eol();
-
-//      builder.addInjector(b -> {
-//        bean.bMusher = b.get(BMusher.class);
-//      });
-
+      writer.append("      });").eol();
     }
+    writer.append("    }").eol();
     writer.append("  }").eol().eol();
   }
 

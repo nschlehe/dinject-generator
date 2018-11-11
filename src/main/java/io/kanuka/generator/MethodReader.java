@@ -64,7 +64,7 @@ class MethodReader {
   String builderGetFactory() {
 
     //    org.example.coffee.factory.Configuration factory = builder.get(org.example.coffee.factory.Configuration.class);
-    return String.format("    %s factory = builder.get(%s.class);", factoryType, factoryType);
+    return String.format("      %s factory = builder.get(%s.class);", factoryType, factoryType);
   }
 
   String builderBuildBean() {
@@ -72,7 +72,7 @@ class MethodReader {
     String methodName = element.getSimpleName().toString();
 
     StringBuilder sb = new StringBuilder();
-    sb.append(String.format("    %s bean = factory.%s(", returnTypeRaw, methodName));
+    sb.append(String.format("      %s bean = factory.%s(", returnTypeRaw, methodName));
 
     for (int i = 0; i < params.size(); i++) {
       if (i > 0) {
@@ -87,7 +87,14 @@ class MethodReader {
   String builderDebugCurrentMethod() {
 
     String methodName = element.toString();
-    return String.format("    builder.currentBean(\"%s\");", returnTypeRaw + " via " + methodName);
+    return String.format("      builder.currentBean(\"%s\");", returnTypeRaw + " via " + methodName);
+  }
+
+  /**
+   * Return the type we check to see if we skip building the bean due to supplied beans.
+   */
+  String getIsAddBeanFor() {
+    return returnTypeRaw;
   }
 
   static class MethodParam {

@@ -122,13 +122,32 @@ class BeanReader {
     return interfaceTypes;
   }
 
+  /**
+   * Return the type that if already supplied we will skip creating and adding the bean.
+   * <p>
+   * A supplied bean is expected to be a test double that would replace the normally injected bean.
+   * </p>
+   */
+  String getIsAddBeanFor() {
+    if (interfaceTypes.size() == 1) {
+      return interfaceTypes.get(0);
+    }
+    return beanType.getQualifiedName().toString();
+  }
+
+  /**
+   * Return all the interfaces and annotations associated with this bean.
+   * <p>
+   * The bean is made a 'member' of the list of beans that implement the interface or have the
+   * annotation.
+   * </p>
+   */
   String getInterfacesAndAnnotations() {
 
     StringBuilder sb = new StringBuilder();
 
-    List<? extends TypeMirror> interfaces = beanType.getInterfaces();
-    for (TypeMirror anInterface : interfaces) {
-      sb.append(",\"").append(anInterface.toString()).append("\"");
+    for (String anInterface : interfaceTypes) {
+      sb.append(",\"").append(anInterface).append("\"");
     }
 
     // get class level annotations (that are not Named and Singleton)
