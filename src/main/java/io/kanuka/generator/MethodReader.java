@@ -13,13 +13,14 @@ class MethodReader {
   private final ExecutableElement element;
   private final String factoryType;
   private final String returnTypeRaw;
-
+  private final boolean isVoid;
   private final List<MethodParam> params = new ArrayList<>();
 
   MethodReader(ExecutableElement element, TypeElement beanType) {
     this.element = element;
     this.returnTypeRaw = element.getReturnType().toString();
     this.factoryType = beanType.getQualifiedName().toString();
+    this.isVoid = returnTypeRaw.equals("void");
   }
 
   void read() {
@@ -69,7 +70,11 @@ class MethodReader {
 
     String methodName = element.getSimpleName().toString();
     StringBuilder sb = new StringBuilder();
-    sb.append(String.format("      %s bean = factory.%s(", returnTypeRaw, methodName));
+    if (isVoid) {
+      sb.append(String.format("      factory.%s(", methodName));
+    } else {
+      sb.append(String.format("      %s bean = factory.%s(", returnTypeRaw, methodName));
+    }
 
     for (int i = 0; i < params.size(); i++) {
       if (i > 0) {
@@ -85,6 +90,12 @@ class MethodReader {
 
     String methodName = element.toString();
     return String.format("      builder.currentBean(\"%s\");", returnTypeRaw + " via " + methodName);
+  }
+
+  void builderBuildAddBean(Append writer) {
+    if (!isVoid) {
+      writer.append("      builder.addBean(bean, null);").eol();
+    }
   }
 
   /**

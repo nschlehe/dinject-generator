@@ -73,7 +73,7 @@ class SimpleBeanWriter {
     writer.append(method.builderDebugCurrentMethod()).eol();
     writer.append(method.builderGetFactory()).eol();
     writer.append(method.builderBuildBean()).eol();
-    writer.append("      builder.addBean(bean, null);").eol();
+    method.builderBuildAddBean(writer);
     writer.append("    }").eol();
     writer.append("  }").eol().eol();
   }
