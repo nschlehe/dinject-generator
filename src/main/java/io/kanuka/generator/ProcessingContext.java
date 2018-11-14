@@ -5,7 +5,9 @@ import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
@@ -25,6 +27,7 @@ class ProcessingContext {
 
   private final Filer filer;
   private final Elements elementUtils;
+  private final Types typeUtils;
 
   private String contextName;
 
@@ -37,6 +40,7 @@ class ProcessingContext {
     this.messager = processingEnv.getMessager();
     this.filer = processingEnv.getFiler();
     this.elementUtils = processingEnv.getElementUtils();
+    this.typeUtils = processingEnv.getTypeUtils();
   }
 
   /**
@@ -116,4 +120,7 @@ class ProcessingContext {
     return contextPackage;
   }
 
+  Element asElement(TypeMirror returnType) {
+    return typeUtils.asElement(returnType);
+  }
 }

@@ -1,6 +1,8 @@
 package io.kanuka.generator;
 
 import javax.inject.Named;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -10,17 +12,38 @@ import java.util.List;
 
 class MethodReader {
 
+  private final ProcessingContext processingContext;
   private final ExecutableElement element;
   private final String factoryType;
+  private final TypeMirror returnType;
   private final String returnTypeRaw;
   private final boolean isVoid;
   private final List<MethodParam> params = new ArrayList<>();
 
-  MethodReader(ExecutableElement element, TypeElement beanType) {
+  private final List<String> interfaceTypes = new ArrayList<>();
+
+  MethodReader(ProcessingContext processingContext, ExecutableElement element, TypeElement beanType) {
+    this.processingContext = processingContext;
     this.element = element;
-    this.returnTypeRaw = element.getReturnType().toString();
+    this.returnType = element.getReturnType();
+    this.returnTypeRaw = returnType.toString();
     this.factoryType = beanType.getQualifiedName().toString();
     this.isVoid = returnTypeRaw.equals("void");
+
+    initInterfaces();
+  }
+
+  private void initInterfaces() {
+    Element element = processingContext.asElement(returnType);
+    if (element instanceof TypeElement) {
+      TypeElement te = (TypeElement) element;
+      if (te.getKind() == ElementKind.INTERFACE) {
+        interfaceTypes.add(te.getQualifiedName().toString());
+      }
+      for (TypeMirror anInterface : te.getInterfaces()) {
+        interfaceTypes.add(anInterface.toString());
+      }
+    }
   }
 
   void read() {
@@ -94,7 +117,11 @@ class MethodReader {
 
   void builderBuildAddBean(Append writer) {
     if (!isVoid) {
-      writer.append("      builder.addBean(bean, null);").eol();
+      writer.append("      builder.addBean(bean, null");
+      for (String anInterface : interfaceTypes) {
+        writer.append(",\"").append(anInterface).append("\"");
+      }
+      writer.append(");").eol();
     }
   }
 
@@ -102,6 +129,9 @@ class MethodReader {
    * Return the type we check to see if we skip building the bean due to supplied beans.
    */
   String getIsAddBeanFor() {
+    if (interfaceTypes.size() == 1) {
+      return interfaceTypes.get(0);
+    }
     return returnTypeRaw;
   }
 

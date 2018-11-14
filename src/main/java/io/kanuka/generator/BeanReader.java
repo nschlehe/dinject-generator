@@ -22,6 +22,8 @@ class BeanReader {
 
   private final TypeElement beanType;
 
+  private final ProcessingContext processingContext;
+
   private String name;
 
   private MethodReader injectConstructor;
@@ -40,8 +42,10 @@ class BeanReader {
 
   private final List<String> interfaceTypes = new ArrayList<>();
 
-  BeanReader(TypeElement beanType) {
+
+  BeanReader(TypeElement beanType, ProcessingContext processingContext) {
     this.beanType = beanType;
+    this.processingContext = processingContext;
     initInterfaces();
   }
 
@@ -178,7 +182,7 @@ class BeanReader {
 
     ExecutableElement ex = (ExecutableElement) element;
 
-    MethodReader methodReader = new MethodReader(ex, beanType);
+    MethodReader methodReader = new MethodReader(processingContext, ex, beanType);
     methodReader.read();
 
     Inject inject = element.getAnnotation(Inject.class);
@@ -221,7 +225,7 @@ class BeanReader {
   }
 
   private void addFactoryMethod(ExecutableElement methodElement) {
-    MethodReader methodReader = new MethodReader(methodElement, beanType);
+    MethodReader methodReader = new MethodReader(processingContext, methodElement, beanType);
     methodReader.read();
     factoryMethods.add(methodReader);
   }
