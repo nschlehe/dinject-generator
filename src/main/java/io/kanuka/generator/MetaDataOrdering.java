@@ -29,11 +29,9 @@ class MetaDataOrdering {
       } else {
         queue.add(metaData);
       }
+      topPackage = Util.commonParent(topPackage, metaData.getTopPackage());
+
       // register into map keyed by provider
-      String aPackage = metaData.getTopPackage();
-      if (topPackage == null || aPackage.length() < topPackage.length()) {
-        topPackage = aPackage;
-      }
       providers.computeIfAbsent(metaData.getType(), s -> new ProviderList()).add(metaData);
       for (String provide : metaData.getProvides()) {
         providers.computeIfAbsent(provide, s -> new ProviderList()).add(metaData);
@@ -41,7 +39,6 @@ class MetaDataOrdering {
     }
 
     // order no dependency list by ... name asc (order does not matter but for consistency)
-
   }
 
   int processQueue() {

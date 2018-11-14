@@ -4,6 +4,8 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
@@ -22,15 +24,19 @@ class ProcessingContext {
   private final Messager messager;
 
   private final Filer filer;
+  private final Elements elementUtils;
 
   private String contextName;
 
   private String[] contextDependsOn;
 
+  private String contextPackage;
+
   ProcessingContext(ProcessingEnvironment processingEnv) {
     this.processingEnv = processingEnv;
     this.messager = processingEnv.getMessager();
-    filer = processingEnv.getFiler();
+    this.filer = processingEnv.getFiler();
+    this.elementUtils = processingEnv.getElementUtils();
   }
 
   /**
@@ -69,10 +75,9 @@ class ProcessingContext {
 
     } catch (IOException e) {
       e.printStackTrace();
-      logError("Error reading services file: "+e.getMessage());
+      logError("Error reading services file: " + e.getMessage());
     }
     return null;
-
   }
 
   /**
@@ -89,16 +94,26 @@ class ProcessingContext {
     return filer.createResource(StandardLocation.CLASS_OUTPUT, "", "META-INF/services/io.kanuka.core.BeanContextFactory");
   }
 
-  void setContextDetails(String name, String[] dependsOn) {
+  void setContextDetails(String name, String[] dependsOn, Element contextElement) {
     this.contextName = name;
     this.contextDependsOn = dependsOn;
+
+    // determine the context package (that we put the $diFactory class into)
+    PackageElement pkg = elementUtils.getPackageOf(contextElement);
+    logWarn("using package from element " + pkg);
+    this.contextPackage = (pkg == null) ? null : pkg.getQualifiedName().toString();
   }
 
-  public String getContextName() {
+  String getContextName() {
     return contextName;
   }
 
-  public String[] getContextDependsOn() {
+  String[] getContextDependsOn() {
     return contextDependsOn;
   }
+
+  String getContextPackage() {
+    return contextPackage;
+  }
+
 }

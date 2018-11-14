@@ -82,14 +82,11 @@ class MetaData {
    * Return the top level package for the bean and the interfaces it implements.
    */
   String getTopPackage() {
-    String topPackage = trimPackage(type);
-    for (String interfaceCls : provides) {
-      String interfacePackage = trimPackage(interfaceCls);
-      if (higherPackage(interfacePackage, topPackage)) {
-        topPackage = interfacePackage;
-      }
+    if (method == null || method.isEmpty()) {
+      return trimPackage(type);
     }
-    return topPackage;
+    // ignore Beans from @Bean factory methods
+    return null;
   }
 
   private boolean higherPackage(String interfacePackage, String topPackage) {

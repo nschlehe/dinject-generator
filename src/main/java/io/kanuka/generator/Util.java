@@ -25,4 +25,28 @@ class Util {
   static String extractProviderType(String rawType) {
     return rawType.substring(22, rawType.length() - 1);
   }
+
+  /**
+   * Return the common parent package.
+   */
+  static String commonParent(String currentTop, String aPackage) {
+
+    if (aPackage == null) return currentTop;
+    if (currentTop == null) return aPackage;
+    if (aPackage.startsWith(currentTop)) {
+      return currentTop;
+    }
+    int next;
+    do {
+      next = currentTop.lastIndexOf('.');
+      if (next > -1) {
+        currentTop = currentTop.substring(0, next);
+        if (aPackage.startsWith(currentTop)) {
+          return currentTop;
+        }
+      }
+    } while (next > -1);
+
+    return currentTop;
+  }
 }
