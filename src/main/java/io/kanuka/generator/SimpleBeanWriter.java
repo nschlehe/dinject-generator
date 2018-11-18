@@ -14,7 +14,7 @@ class SimpleBeanWriter {
 
   private final BeanReader beanReader;
 
-  private final ProcessingContext processingContext;
+  private final ProcessingContext ctx;
 
   private Append writer;
 
@@ -22,24 +22,17 @@ class SimpleBeanWriter {
   private String shortName;
   private String packageName;
 
-  SimpleBeanWriter(BeanReader beanReader, ProcessingContext processingContext) {
+  SimpleBeanWriter(BeanReader beanReader, ProcessingContext ctx) {
     this.beanReader = beanReader;
-    this.processingContext = processingContext;
+    this.ctx = ctx;
+    TypeElement origin = beanReader.getBeanType();
+    this.originName = origin.getQualifiedName().toString();
+    this.shortName = origin.getSimpleName().toString();
+    this.packageName = Util.packageOf(originName);
   }
 
   private Writer createFileWriter() throws IOException {
-
-    TypeElement origin = beanReader.getBeanType();
-    originName = origin.getQualifiedName().toString();
-    shortName = origin.getSimpleName().toString();
-    String fullName = originName + "$di";
-
-    int dp = originName.lastIndexOf('.');
-    if (dp > -1) {
-      packageName = originName.substring(0, dp);
-    }
-
-    JavaFileObject jfo = processingContext.createWriter(fullName, origin);
+    JavaFileObject jfo = ctx.createWriter(originName + "$di", beanReader.getBeanType());
     return jfo.openWriter();
   }
 
@@ -60,17 +53,15 @@ class SimpleBeanWriter {
   }
 
   private void writeStaticFactoryBeanMethods() {
-    List<MethodReader> factoryMethods = beanReader.getFactoryMethods();
-    for (MethodReader factoryMethod : factoryMethods) {
+    for (MethodReader factoryMethod : beanReader.getFactoryMethods()) {
       writeFactoryBeanMethod(factoryMethod);
     }
   }
 
   private void writeFactoryBeanMethod(MethodReader method) {
     writer.append("  public static void build_%s(Builder builder) {", method.getName()).eol();
-    String addFor = method.getIsAddBeanFor();
-    writer.append("    if (builder.isAddBeanFor(\"%s\")) {", addFor).eol();
-    writer.append(method.builderDebugCurrentMethod()).eol();
+
+    method.buildAddFor(writer);
     writer.append(method.builderGetFactory()).eol();
     writer.append(method.builderBuildBean()).eol();
     method.builderBuildAddBean(writer);
@@ -80,20 +71,16 @@ class SimpleBeanWriter {
 
   private void writeStaticFactoryMethod() {
 
-    MethodReader constructor = beanReader.obtainConstructor();
+    MethodReader constructor = beanReader.getConstructor();
     if (constructor == null) {
-      processingContext.logError(beanReader.getBeanType(), "Unable to determine constructor to use?");
+      ctx.logError(beanReader.getBeanType(), "Unable to determine constructor to use?");
       return;
     }
 
     writer.append("  public static void build(Builder builder) {").eol();
 
-    String addFor = beanReader.getIsAddBeanFor();
-    writer.append("    if (builder.isAddBeanFor(\"%s\")) {", addFor).eol();
-    writer.append("      builder.currentBean(\"%s\");", originName).eol();
-
-    // CoffeeMaker bean = new CoffeeMaker(builder.get(Heater.class, "electric"), builder.get(Pump.class));
-    writer.append("      %s bean = new %s(", originName, originName);
+    beanReader.buildAddFor(writer);
+    writer.append("      %s bean = new %s(", shortName, shortName);
 
     // add constructor dependencies
     List<MethodReader.MethodParam> params = constructor.getParams();
@@ -106,7 +93,7 @@ class SimpleBeanWriter {
     writer.append(");").eol();
 
     //builder.addBean(bean, null, "coffee.Controller");
-    writer.append("      builder.addBean(bean, ");
+    writer.append("      builder.register(bean, ");
     String name = beanReader.getName();
     if (name == null) {
       writer.append("null");
@@ -118,13 +105,11 @@ class SimpleBeanWriter {
     writer.append(beanReader.getInterfacesAndAnnotations()).append(");").eol();
 
     if (beanReader.isLifecycleRequired()) {
-      //builder.addLifecycle(new CoffeeMaker$di(bean));
       writer.append("      builder.addLifecycle(new %s$di(bean));", shortName).eol();
     }
     if (beanReader.isFieldInjectionRequired()) {
       writer.append("      builder.addInjector(b -> {").eol();
-      List<FieldReader> injectFields = beanReader.getInjectFields();
-      for (FieldReader fieldReader : injectFields) {
+      for (FieldReader fieldReader : beanReader.getInjectFields()) {
         String fieldName = fieldReader.getFieldName();
         String getDependency = fieldReader.builderGetDependency();
         writer.append("        bean.%s = %s;", fieldName, getDependency).eol();
@@ -136,10 +121,7 @@ class SimpleBeanWriter {
   }
 
   private void writeImports() {
-    if (beanReader.isLifecycleRequired()) {
-      writer.append("import io.kanuka.core.BeanLifecycle;").eol();
-    }
-    writer.append("import io.kanuka.core.Builder;").eol().eol();
+    beanReader.writeImports(writer);
   }
 
   private void writeLifecycleMethods() {
@@ -175,6 +157,7 @@ class SimpleBeanWriter {
   }
 
   private void writeClassStart() {
+    writer.append("@Generated(\"io.kanuka\")").eol();
     writer.append("public class ").append(shortName).append("$di ");
     if (beanReader.isLifecycleRequired()) {
       writer.append("implements BeanLifecycle ");
@@ -187,27 +170,4 @@ class SimpleBeanWriter {
       writer.append("package %s;", packageName).eol().eol();
     }
   }
-
-//  package coffee;
-//
-//import io.kanuka.core.BeanLifecycle;
-//
-//  public class CoffeeMaker$k implements BeanLifecycle {
-//
-//    private final CoffeeMaker bean;
-//
-//    public CoffeeMaker$k(CoffeeMaker bean) {
-//      this.bean = bean;
-//    }
-//
-//    @Override
-//    public void postConstruct() {
-//      bean.postConstruct();
-//    }
-//
-//    @Override
-//    public void preDestroy() {
-//      bean.destroy();
-//    }
-//  }
 }

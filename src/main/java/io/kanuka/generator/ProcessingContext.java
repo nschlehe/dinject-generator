@@ -1,6 +1,7 @@
 package io.kanuka.generator;
 
 import javax.annotation.processing.Filer;
+import javax.annotation.processing.FilerException;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
@@ -35,6 +36,8 @@ class ProcessingContext {
 
   private String contextPackage;
 
+  private String metaInfServicesLine;
+
   ProcessingContext(ProcessingEnvironment processingEnv) {
     this.processingEnv = processingEnv;
     this.messager = processingEnv.getMessager();
@@ -63,6 +66,14 @@ class ProcessingContext {
   }
 
   String loadMetaInfServices() {
+    if (metaInfServicesLine == null) {
+      metaInfServicesLine = loadMetaInf();
+    }
+    return metaInfServicesLine;
+  }
+
+  private String loadMetaInf() {
+    // logDebug("loading metaInfServicesLine ...");
     try {
       FileObject fileObject = processingEnv.getFiler().getResource(StandardLocation.CLASS_OUTPUT, "", META_INF_FACTORY);
       if (fileObject != null) {
@@ -75,11 +86,14 @@ class ProcessingContext {
       }
 
     } catch (FileNotFoundException e) {
-      logDebug("no services file yet");
+      // logDebug("no services file yet");
 
-    } catch (IOException e) {
+    } catch (FilerException e) {
+      logDebug("FilerException reading services file");
+
+    } catch (Exception e) {
       e.printStackTrace();
-      logError("Error reading services file: " + e.getMessage());
+      logWarn("Error reading services file: " + e.getMessage());
     }
     return null;
   }

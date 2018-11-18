@@ -3,6 +3,7 @@ package io.kanuka.generator;
 import io.kanuka.Bean;
 import io.kanuka.Factory;
 
+import javax.annotation.Generated;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
@@ -17,12 +18,16 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 class BeanReader {
 
   private final TypeElement beanType;
 
   private final ProcessingContext processingContext;
+
+  private final String shortName;
 
   private String name;
 
@@ -36,30 +41,55 @@ class BeanReader {
 
   private Element preDestroyMethod;
 
-  private String providerParamType;
-
   private final List<FieldReader> injectFields = new ArrayList<>();
 
   private final List<String> interfaceTypes = new ArrayList<>();
 
+  private String addForType;
+
+  private Set<String> importTypes = new TreeSet<>();
+
+  private MethodReader constructor;
+
+  private String registrationTypes;
+
+  private boolean writtenToFile;
 
   BeanReader(TypeElement beanType, ProcessingContext processingContext) {
     this.beanType = beanType;
+    this.shortName = beanType.getSimpleName().toString();
     this.processingContext = processingContext;
     initInterfaces();
+    initAddFor();
+  }
+
+  private void initAddFor() {
+    if (interfaceTypes.size() == 1) {
+      addForType = Util.shortName(Util.unwrapProvider(interfaceTypes.get(0)));
+    }
   }
 
   private void initInterfaces() {
-    for (TypeMirror anInterface : beanType.getInterfaces()) {
-      interfaceTypes.add(checkProvider(anInterface.toString()));
-    }
-  }
 
-  private String checkProvider(String interfaceType) {
-    if (Util.isProvider(interfaceType)) {
-      this.providerParamType = Util.extractProviderType(interfaceType);
+    StringBuilder sb = new StringBuilder();
+
+    for (TypeMirror anInterface : beanType.getInterfaces()) {
+      String type = Util.unwrapProvider(anInterface.toString());
+      interfaceTypes.add(type);
+      importTypes.add(type);
+      sb.append(", ").append(Util.shortName(type)).append(".class");
     }
-    return interfaceType;
+
+    // get class level annotations (that are not Named and Singleton)
+    for (AnnotationMirror annotationMirror : beanType.getAnnotationMirrors()) {
+      String annotationType = annotationMirror.getAnnotationType().toString();
+      if (includeAnnotation(annotationType)) {
+        importTypes.add(annotationType);
+        sb.append(", ").append(Util.shortName(annotationType)).append(".class");
+      }
+    }
+
+    registrationTypes = sb.toString();
   }
 
   TypeElement getBeanType() {
@@ -100,21 +130,33 @@ class BeanReader {
           break;
       }
     }
+    constructor = findConstructor();
+    if (constructor != null) {
+      constructor.addImports(importTypes);
+    }
+    for (MethodReader factoryMethod : factoryMethods) {
+      factoryMethod.addImports(importTypes);
+    }
+  }
 
+  private MethodReader findConstructor() {
+    if (injectConstructor != null) {
+      return injectConstructor;
+    }
+    if (otherConstructors.size() == 1) {
+      return otherConstructors.get(0);
+    }
+    return null;
   }
 
   List<String> getDependsOn() {
 
     List<String> list = new ArrayList<>();
-
-    MethodReader methodReader = obtainConstructor();
-    if (methodReader != null) {
-      List<MethodReader.MethodParam> params = methodReader.getParams();
-      for (MethodReader.MethodParam param : params) {
+    if (constructor != null) {
+      for (MethodReader.MethodParam param : constructor.getParams()) {
         list.add(param.getDependsOn());
       }
     }
-
     return list;
   }
 
@@ -127,19 +169,6 @@ class BeanReader {
   }
 
   /**
-   * Return the type that if already supplied we will skip creating and adding the bean.
-   * <p>
-   * A supplied bean is expected to be a test double that would replace the normally injected bean.
-   * </p>
-   */
-  String getIsAddBeanFor() {
-    if (interfaceTypes.size() == 1) {
-      return interfaceTypes.get(0);
-    }
-    return beanType.getQualifiedName().toString();
-  }
-
-  /**
    * Return all the interfaces and annotations associated with this bean.
    * <p>
    * The bean is made a 'member' of the list of beans that implement the interface or have the
@@ -147,28 +176,15 @@ class BeanReader {
    * </p>
    */
   String getInterfacesAndAnnotations() {
-
-    StringBuilder sb = new StringBuilder();
-
-    for (String anInterface : interfaceTypes) {
-      sb.append(",\"").append(anInterface).append("\"");
-    }
-
-    // get class level annotations (that are not Named and Singleton)
-    for (AnnotationMirror annotationMirror : beanType.getAnnotationMirrors()) {
-      String annotationType = annotationMirror.getAnnotationType().toString();
-      if (includeAnnotation(annotationType)) {
-        sb.append(",\"").append(annotationType).append("\"");
-      }
-    }
-
-    return sb.toString();
+    return registrationTypes;
   }
 
   private boolean includeAnnotation(String annotationType) {
     return !Singleton.class.getName().equals(annotationType)
       && !Named.class.getName().equals(annotationType)
-      && !Factory.class.getName().equals(annotationType);
+      && !Factory.class.getName().equals(annotationType)
+      && !Generated.class.getName().equals(annotationType)
+      && !"io.kanuka.web.Path".equals(annotationType);
   }
 
   private void readNamed() {
@@ -182,7 +198,7 @@ class BeanReader {
 
     ExecutableElement ex = (ExecutableElement) element;
 
-    MethodReader methodReader = new MethodReader(processingContext, ex, beanType);
+    MethodReader methodReader = new MethodReader(processingContext, ex, beanType, false);
     methodReader.read();
 
     Inject inject = element.getAnnotation(Inject.class);
@@ -209,9 +225,6 @@ class BeanReader {
         addFactoryMethod(methodElement);
       }
     }
-    if (providerParamType != null && isProviderMethod(methodElement)) {
-      addFactoryMethod(methodElement);
-    }
 
     PostConstruct pcMarker = element.getAnnotation(PostConstruct.class);
     if (pcMarker != null) {
@@ -225,14 +238,9 @@ class BeanReader {
   }
 
   private void addFactoryMethod(ExecutableElement methodElement) {
-    MethodReader methodReader = new MethodReader(processingContext, methodElement, beanType);
+    MethodReader methodReader = new MethodReader(processingContext, methodElement, beanType, true);
     methodReader.read();
     factoryMethods.add(methodReader);
-  }
-
-  private boolean isProviderMethod(ExecutableElement methodElement) {
-    return providerParamType.equals(methodElement.getReturnType().toString())
-      && "get".equals(methodElement.getSimpleName().toString());
   }
 
   String getSimpleName() {
@@ -261,17 +269,44 @@ class BeanReader {
     return metaData;
   }
 
-  MethodReader obtainConstructor() {
-    if (injectConstructor != null) {
-      return injectConstructor;
-    }
-    if (otherConstructors.size() == 1) {
-      return otherConstructors.get(0);
-    }
-    return null;
-  }
-
   boolean isFieldInjectionRequired() {
     return !injectFields.isEmpty();
+  }
+
+  void buildAddFor(Append writer) {
+    writer.append("    if (builder.isAddBeanFor(");
+    if (addForType != null) {
+      writer.append(addForType).append(".class, ");
+    }
+    writer.append(shortName).append(".class)) {").eol();
+  }
+
+  private Set<String> importTypes() {
+    if (isLifecycleRequired()) {
+      importTypes.add("io.kanuka.core.BeanLifecycle");
+    }
+    importTypes.add("javax.annotation.Generated");
+    importTypes.add("io.kanuka.core.Builder");
+    importTypes.add(beanType.getQualifiedName().toString());
+    return importTypes;
+  }
+
+  void writeImports(Append writer) {
+    for (String importType : importTypes()) {
+      writer.append("import %s;", importType).eol();
+    }
+    writer.eol();
+  }
+
+  MethodReader getConstructor() {
+    return constructor;
+  }
+
+  boolean isWrittenToFile() {
+    return writtenToFile;
+  }
+
+  void setWrittenToFile() {
+    this.writtenToFile = true;
   }
 }

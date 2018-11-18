@@ -9,6 +9,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 class MethodReader {
 
@@ -21,13 +22,18 @@ class MethodReader {
   private final List<MethodParam> params = new ArrayList<>();
 
   private final List<String> interfaceTypes = new ArrayList<>();
+  private final String factoryShortName;
+  private final boolean isFactory;
+  private String addForType;
 
-  MethodReader(ProcessingContext processingContext, ExecutableElement element, TypeElement beanType) {
+  MethodReader(ProcessingContext processingContext, ExecutableElement element, TypeElement beanType, boolean isFactory) {
+    this.isFactory = isFactory;
     this.processingContext = processingContext;
     this.element = element;
     this.returnType = element.getReturnType();
     this.returnTypeRaw = returnType.toString();
     this.factoryType = beanType.getQualifiedName().toString();
+    this.factoryShortName = Util.shortName(factoryType);
     this.isVoid = returnTypeRaw.equals("void");
 
     initInterfaces();
@@ -43,19 +49,17 @@ class MethodReader {
       for (TypeMirror anInterface : te.getInterfaces()) {
         interfaceTypes.add(anInterface.toString());
       }
+      if (interfaceTypes.size() == 1) {
+        addForType = interfaceTypes.get(0);
+      }
     }
   }
 
   void read() {
     List<? extends VariableElement> ps = element.getParameters();
     for (VariableElement p : ps) {
-      params.add(new MethodParam(p.asType(), readNamed(p)));
+      params.add(new MethodParam(p));
     }
-  }
-
-  private String readNamed(VariableElement p) {
-    Named named = p.getAnnotation(Named.class);
-    return (named == null) ? null : named.value();
   }
 
   List<MethodParam> getParams() {
@@ -86,7 +90,7 @@ class MethodReader {
   }
 
   String builderGetFactory() {
-    return String.format("      %s factory = builder.get(%s.class);", factoryType, factoryType);
+    return String.format("      %s factory = builder.get(%s.class);", factoryShortName, factoryShortName);
   }
 
   String builderBuildBean() {
@@ -96,7 +100,7 @@ class MethodReader {
     if (isVoid) {
       sb.append(String.format("      factory.%s(", methodName));
     } else {
-      sb.append(String.format("      %s bean = factory.%s(", returnTypeRaw, methodName));
+      sb.append(String.format("      %s bean = factory.%s(", Util.shortName(returnTypeRaw), methodName));
     }
 
     for (int i = 0; i < params.size(); i++) {
@@ -109,30 +113,36 @@ class MethodReader {
     return sb.toString();
   }
 
-  String builderDebugCurrentMethod() {
-
-    String methodName = element.toString();
-    return String.format("      builder.currentBean(\"%s\");", returnTypeRaw + " via " + methodName);
-  }
-
   void builderBuildAddBean(Append writer) {
     if (!isVoid) {
-      writer.append("      builder.addBean(bean, null");
+      writer.append("      builder.register(bean, null");
       for (String anInterface : interfaceTypes) {
-        writer.append(",\"").append(anInterface).append("\"");
+        writer.append(", ").append(Util.shortName(anInterface)).append(".class");
       }
       writer.append(");").eol();
     }
   }
 
-  /**
-   * Return the type we check to see if we skip building the bean due to supplied beans.
-   */
-  String getIsAddBeanFor() {
-    if (interfaceTypes.size() == 1) {
-      return interfaceTypes.get(0);
+  void addImports(Set<String> importTypes) {
+    for (MethodParam param : params) {
+      param.addImports(importTypes);
     }
-    return returnTypeRaw;
+    if (isFactory) {
+      importTypes.add(returnTypeRaw);
+    }
+  }
+
+  void buildAddFor(Append writer) {
+
+    writer.append("    if (builder.isAddBeanFor(");
+    if (addForType != null) {
+      writer.append(addForType).append(".class, ");
+    }
+    if (isVoid) {
+      writer.append("Void.class)) {").eol();
+    } else {
+      writer.append(Util.shortName(returnTypeRaw)).append(".class)) {").eol();
+    }
   }
 
   static class MethodParam {
@@ -143,9 +153,10 @@ class MethodReader {
     private final boolean optionalType;
     private final String paramType;
 
-    MethodParam(TypeMirror type, String named) {
+    MethodParam(VariableElement p) {
+      TypeMirror type = p.asType();
       this.rawType = type.toString();
-      this.named = named;
+      this.named = readNamed(p);
       this.listType = Util.isList(rawType);
       this.optionalType = !listType && Util.isOptional(rawType);
       if (optionalType) {
@@ -157,6 +168,11 @@ class MethodReader {
       }
     }
 
+    private String readNamed(VariableElement p) {
+      Named named = p.getAnnotation(Named.class);
+      return (named == null) ? null : named.value();
+    }
+
     String builderGetDependency() {
       StringBuilder sb = new StringBuilder();
       if (listType) {
@@ -166,8 +182,7 @@ class MethodReader {
       } else {
         sb.append("builder.get(");
       }
-
-      sb.append(paramType).append(".class");
+      sb.append(Util.shortName(paramType)).append(".class");
       if (named != null) {
         sb.append(",\"").append(named).append("\"");
       }
@@ -177,6 +192,10 @@ class MethodReader {
 
     String getDependsOn() {
       return paramType;
+    }
+
+    void addImports(Set<String> importTypes) {
+      importTypes.add(paramType);
     }
   }
 }

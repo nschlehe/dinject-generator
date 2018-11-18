@@ -2,6 +2,43 @@ package io.kanuka.generator;
 
 class Util {
 
+  static String classOfMethod(String method) {
+    return packageOf(method);
+  }
+
+  static String shortMethod(String method) {
+    int p = method.lastIndexOf('.');
+    if (p > -1) {
+      p = method.lastIndexOf('.', p - 1);
+      if (p > -1) {
+        return method.substring(p + 1);
+      }
+    }
+    return method;
+  }
+
+  static String packageOf(String cls) {
+    int pos = cls.lastIndexOf('.');
+    return (pos == -1) ? "" : cls.substring(0, pos);
+  }
+
+  static String unwrapProvider(String maybeProvider) {
+    if (isProvider(maybeProvider)) {
+      return extractProviderType(maybeProvider);
+    } else {
+      return maybeProvider;
+    }
+  }
+
+  static String shortName(String fullType) {
+    int p = fullType.lastIndexOf('.');
+    if (p == -1) {
+      return fullType;
+    } else {
+      return fullType.substring(p + 1);
+    }
+  }
+
   static String extractOptionalType(String rawType) {
     return rawType.substring(19, rawType.length() - 1);
   }

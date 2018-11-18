@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 class MetaDataOrdering {
 
@@ -46,7 +48,7 @@ class MetaDataOrdering {
     int count;
     do {
       count = processQueueRound();
-    } while(count > 0);
+    } while (count > 0);
 
     int remaining = queue.size();
     if (remaining != 0) {
@@ -103,6 +105,14 @@ class MetaDataOrdering {
 
   List<MetaData> getOrdered() {
     return orderedList;
+  }
+
+  Set<String> getImportTypes() {
+    Set<String> importTypes = new TreeSet<>();
+    for (MetaData metaData : orderedList) {
+      metaData.addImportTypes(importTypes);
+    }
+    return importTypes;
   }
 
   private static class ProviderList {

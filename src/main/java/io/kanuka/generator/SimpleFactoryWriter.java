@@ -96,7 +96,12 @@ class SimpleFactoryWriter {
     writer.append("import io.kanuka.core.BeanContextFactory;").eol();
     writer.append("import io.kanuka.core.BuilderFactory;").eol();
     writer.append("import io.kanuka.core.Builder;").eol();
-    writer.append("import io.kanuka.core.DependencyMeta;").eol();
+    writer.append("import io.kanuka.core.DependencyMeta;").eol().eol();
+
+    for (String type : ordering.getImportTypes()) {
+      writer.append("import %s;", type).eol();
+    }
+
     writer.eol();
   }
 

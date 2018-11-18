@@ -5,6 +5,7 @@ import io.kanuka.Factory;
 import io.kanuka.core.DependencyMeta;
 
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.inject.Singleton;
@@ -16,6 +17,8 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -33,7 +36,14 @@ public class Processor extends AbstractProcessor {
 
   private List<BeanReader> beanReaders = new ArrayList<>();
 
+  private Set<String> readBeans = new HashSet<>();
+
   public Processor() {
+  }
+
+  @Override
+  public SourceVersion getSupportedSourceVersion() {
+    return SourceVersion.RELEASE_8;
   }
 
   @Override
@@ -50,32 +60,33 @@ public class Processor extends AbstractProcessor {
     annotations.add(ContextModule.class.getCanonicalName());
     annotations.add(Factory.class.getCanonicalName());
     annotations.add(Singleton.class.getCanonicalName());
+    annotations.add("io.kanuka.web.Controller");
     return annotations;
-  }
-
-  @Override
-  public SourceVersion getSupportedSourceVersion() {
-    return SourceVersion.latest();
   }
 
   @Override
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 
+    Set<? extends Element> controllers = Collections.emptySet();
+    TypeElement typeElement = elementUtils.getTypeElement("io.kanuka.web.Controller");
+    if (typeElement != null) {
+      controllers = roundEnv.getElementsAnnotatedWith(typeElement);
+    }
+
     Set<? extends Element> factoryBeans = roundEnv.getElementsAnnotatedWith(Factory.class);
     Set<? extends Element> beans = roundEnv.getElementsAnnotatedWith(Singleton.class);
-    if (beans.isEmpty() && factoryBeans.isEmpty()) {
-      processingContext.logDebug("skip, no changed beans ...");
-      return false;
-    }
 
     readModule(roundEnv);
     readChangedBeans(factoryBeans, true);
     readChangedBeans(beans, false);
+    readChangedBeans(controllers, false);
 
     mergeMetaData();
 
     writeBeanHelpers();
-    writeBeanFactory();
+    if (roundEnv.processingOver()) {
+      writeBeanFactory();
+    }
 
     return false;
   }
@@ -84,9 +95,16 @@ public class Processor extends AbstractProcessor {
   private void writeBeanHelpers() {
     for (BeanReader beanReader : beanReaders) {
       try {
-        SimpleBeanWriter writer = new SimpleBeanWriter(beanReader, processingContext);
-        writer.write();
+        if (!beanReader.isWrittenToFile()) {
+          SimpleBeanWriter writer = new SimpleBeanWriter(beanReader, processingContext);
+          writer.write();
+          beanReader.setWrittenToFile();
+        }
+      } catch (FilerException e) {
+        processingContext.logWarn("FilerException to write $di class " + beanReader.getBeanType() + " " + e.getMessage());
+
       } catch (IOException e) {
+        e.printStackTrace();
         processingContext.logError(beanReader.getBeanType(), "Failed to write $di class");
       }
     }
@@ -104,6 +122,8 @@ public class Processor extends AbstractProcessor {
     try {
       SimpleFactoryWriter factoryWriter = new SimpleFactoryWriter(ordering, processingContext);
       factoryWriter.write();
+    } catch (FilerException e) {
+      processingContext.logWarn("FilerException trying to write factory " + e.getMessage());
     } catch (IOException e) {
       processingContext.logError("Failed to write factory " + e.getMessage());
     }
@@ -117,7 +137,11 @@ public class Processor extends AbstractProcessor {
       if (!(element instanceof TypeElement)) {
         processingContext.logError("unexpected type [" + element + "]");
       } else {
-        readBeanMeta((TypeElement) element, factory);
+        if (readBeans.add(element.toString())) {
+          readBeanMeta((TypeElement) element, factory);
+        } else {
+          processingContext.logDebug("skipping already processed bean " + element);
+        }
       }
     }
   }
@@ -161,6 +185,11 @@ public class Processor extends AbstractProcessor {
    * Read the dependency injection meta data for the given bean.
    */
   private void readBeanMeta(TypeElement typeElement, boolean factory) {
+
+    if (typeElement.getKind() == ElementKind.ANNOTATION_TYPE) {
+      processingContext.logWarn("skipping annotation type " + typeElement);
+      return;
+    }
     BeanReader beanReader = new BeanReader(typeElement, processingContext);
     beanReader.read(factory);
     beanReaders.add(beanReader);

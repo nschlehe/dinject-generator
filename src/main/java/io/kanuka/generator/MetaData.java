@@ -5,6 +5,7 @@ import io.kanuka.core.DependencyMeta;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Holds the data as per <code>@DependencyMeta</code>
@@ -83,7 +84,7 @@ class MetaData {
    */
   String getTopPackage() {
     if (method == null || method.isEmpty()) {
-      return trimPackage(type);
+      return Util.packageOf(type);
     }
     // ignore Beans from @Bean factory methods
     return null;
@@ -96,21 +97,20 @@ class MetaData {
     return topPackage.startsWith(interfacePackage);
   }
 
-  private String trimPackage(String cls) {
-    int pos = cls.lastIndexOf('.');
-    return (pos == -1) ? "" : cls.substring(0, pos);
-  }
+  void addImportTypes(Set<String> importTypes) {
+    if (hasMethod()) {
+      importTypes.add(Util.classOfMethod(method));
 
-  String getShortType() {
-    int pos = type.lastIndexOf('.');
-    return (pos == -1) ? type : type.substring(pos + 1);
+    } else {
+      importTypes.add(type + "$di");
+    }
   }
 
   String buildMethod() {
 
     StringBuilder sb = new StringBuilder(200);
     sb.append("  @DependencyMeta(type=\"").append(type).append("\"");
-    if (method != null && !method.isEmpty()) {
+    if (hasMethod()) {
       sb.append(", method=\"").append(method).append("\"");
     }
     if (!provides.isEmpty()) {
@@ -121,20 +121,20 @@ class MetaData {
     }
     sb.append(")").append(NEWLINE);
 
-    sb.append("  protected void build").append(getShortType()).append("() {").append(NEWLINE);
-    if (method == null || method.isEmpty()) {
-      sb.append("    ").append(type).append("$di.build(builder);").append(NEWLINE);
+    String shortName = Util.shortName(type);
+    sb.append("  protected void build").append(shortName).append("() {").append(NEWLINE);
+    if (hasMethod()) {
+      sb.append("    ").append(Util.shortMethod(method)).append("(builder);").append(NEWLINE);
     } else {
-      sb.append("    ").append(method).append("(builder);").append(NEWLINE);
+      sb.append("    ").append(shortName).append("$di.build(builder);").append(NEWLINE);
     }
     sb.append("  }").append(NEWLINE);
 
     return sb.toString();
+  }
 
-//    @DependencyMeta(type = "coffee.sub.Widget")
-//    protected void buildWidget() {
-//      coffee.sub.Widget$di.build(builder);
-//    }
+  private boolean hasMethod() {
+    return method != null && !method.isEmpty();
   }
 
   private void appendProvides(StringBuilder sb, String attribute, List<String> types) {
@@ -162,4 +162,7 @@ class MetaData {
     this.method = method;
   }
 
+  String getShortType() {
+    return Util.shortName(type);
+  }
 }
