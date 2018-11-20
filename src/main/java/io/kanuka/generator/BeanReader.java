@@ -34,8 +34,8 @@ class BeanReader {
     EXCLUDED_ANNOTATIONS.add(Named.class.getName());
     EXCLUDED_ANNOTATIONS.add(Factory.class.getName());
     EXCLUDED_ANNOTATIONS.add(Generated.class.getName());
-    EXCLUDED_ANNOTATIONS.add("kotlin.Metadata");
-    EXCLUDED_ANNOTATIONS.add("io.kanuka.web.Path");
+    EXCLUDED_ANNOTATIONS.add(Constants.KOTLIN_METADATA);
+    EXCLUDED_ANNOTATIONS.add(Constants.PATH);
   }
 
   private final TypeElement beanType;
@@ -294,10 +294,10 @@ class BeanReader {
 
   private Set<String> importTypes() {
     if (isLifecycleRequired()) {
-      importTypes.add("io.kanuka.core.BeanLifecycle");
+      importTypes.add(Constants.BEAN_LIFECYCLE);
     }
-    importTypes.add("javax.annotation.Generated");
-    importTypes.add("io.kanuka.core.Builder");
+    importTypes.add(Constants.GENERATED);
+    importTypes.add(Constants.BUILDER);
     importTypes.add(beanType.getQualifiedName().toString());
     return importTypes;
   }

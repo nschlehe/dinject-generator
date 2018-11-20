@@ -60,7 +60,7 @@ public class Processor extends AbstractProcessor {
     annotations.add(ContextModule.class.getCanonicalName());
     annotations.add(Factory.class.getCanonicalName());
     annotations.add(Singleton.class.getCanonicalName());
-    annotations.add("io.kanuka.web.Controller");
+    annotations.add(Constants.CONTROLLER);
     return annotations;
   }
 
@@ -68,7 +68,7 @@ public class Processor extends AbstractProcessor {
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 
     Set<? extends Element> controllers = Collections.emptySet();
-    TypeElement typeElement = elementUtils.getTypeElement("io.kanuka.web.Controller");
+    TypeElement typeElement = elementUtils.getTypeElement(Constants.CONTROLLER);
     if (typeElement != null) {
       controllers = roundEnv.getElementsAnnotatedWith(typeElement);
     }

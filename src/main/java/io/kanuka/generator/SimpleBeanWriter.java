@@ -157,7 +157,7 @@ class SimpleBeanWriter {
   }
 
   private void writeClassStart() {
-    writer.append("@Generated(\"io.kanuka\")").eol();
+    writer.append(Constants.AT_GENERATED).eol();
     writer.append("public class ").append(shortName).append("$di ");
     if (beanReader.isLifecycleRequired()) {
       writer.append("implements BeanLifecycle ");

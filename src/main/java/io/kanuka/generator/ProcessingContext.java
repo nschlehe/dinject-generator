@@ -20,7 +20,6 @@ import java.io.Reader;
 
 class ProcessingContext {
 
-  private static final String META_INF_FACTORY = "META-INF/services/io.kanuka.core.BeanContextFactory";
 
   private final ProcessingEnvironment processingEnv;
 
@@ -75,7 +74,7 @@ class ProcessingContext {
   private String loadMetaInf() {
     // logDebug("loading metaInfServicesLine ...");
     try {
-      FileObject fileObject = processingEnv.getFiler().getResource(StandardLocation.CLASS_OUTPUT, "", META_INF_FACTORY);
+      FileObject fileObject = processingEnv.getFiler().getResource(StandardLocation.CLASS_OUTPUT, "", Constants.META_INF_FACTORY);
       if (fileObject != null) {
         Reader reader = fileObject.openReader(true);
         LineNumberReader lineReader = new LineNumberReader(reader);
@@ -109,7 +108,7 @@ class ProcessingContext {
    * Create a file writer for the given class name.
    */
   FileObject createMetaInfWriter() throws IOException {
-    return filer.createResource(StandardLocation.CLASS_OUTPUT, "", "META-INF/services/io.kanuka.core.BeanContextFactory");
+    return filer.createResource(StandardLocation.CLASS_OUTPUT, "", Constants.META_INF_FACTORY);
   }
 
   void setContextDetails(String name, String[] dependsOn, Element contextElement) {

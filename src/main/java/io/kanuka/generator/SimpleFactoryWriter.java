@@ -91,12 +91,12 @@ class SimpleFactoryWriter {
 
     writer.append("package %s;", factoryPackage).eol().eol();
 
-    writer.append("import io.kanuka.BeanContext;").eol();
-    writer.append("import io.kanuka.ContextModule;").eol();
-    writer.append("import io.kanuka.core.BeanContextFactory;").eol();
-    writer.append("import io.kanuka.core.BuilderFactory;").eol();
-    writer.append("import io.kanuka.core.Builder;").eol();
-    writer.append("import io.kanuka.core.DependencyMeta;").eol().eol();
+    writer.append(Constants.IMPORT_BEANCONTEXT).eol();
+    writer.append(Constants.IMPORT_CONTEXTMODULE).eol();
+    writer.append(Constants.IMPORT_BEANCONTEXTFACTORY).eol();
+    writer.append(Constants.IMPORT_BUILDERFACTORY).eol();
+    writer.append(Constants.IMPORT_BUILDER).eol();
+    writer.append(Constants.IMPORT_DEPENDENCYMETA).eol().eol();
 
     for (String type : ordering.getImportTypes()) {
       writer.append("import %s;", type).eol();
