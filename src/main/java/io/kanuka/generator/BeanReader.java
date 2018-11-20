@@ -17,11 +17,26 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
 class BeanReader {
+
+  /**
+   * Annotations that we don't bother registering lists for.
+   */
+  private static Set<String> EXCLUDED_ANNOTATIONS = new HashSet<>();
+
+  static {
+    EXCLUDED_ANNOTATIONS.add(Singleton.class.getName());
+    EXCLUDED_ANNOTATIONS.add(Named.class.getName());
+    EXCLUDED_ANNOTATIONS.add(Factory.class.getName());
+    EXCLUDED_ANNOTATIONS.add(Generated.class.getName());
+    EXCLUDED_ANNOTATIONS.add("kotlin.Metadata");
+    EXCLUDED_ANNOTATIONS.add("io.kanuka.web.Path");
+  }
 
   private final TypeElement beanType;
 
@@ -180,11 +195,7 @@ class BeanReader {
   }
 
   private boolean includeAnnotation(String annotationType) {
-    return !Singleton.class.getName().equals(annotationType)
-      && !Named.class.getName().equals(annotationType)
-      && !Factory.class.getName().equals(annotationType)
-      && !Generated.class.getName().equals(annotationType)
-      && !"io.kanuka.web.Path".equals(annotationType);
+    return !EXCLUDED_ANNOTATIONS.contains(annotationType);
   }
 
   private void readNamed() {
