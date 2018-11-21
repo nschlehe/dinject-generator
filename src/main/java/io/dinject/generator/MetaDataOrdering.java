@@ -1,4 +1,4 @@
-package io.kanuka.generator;
+package io.dinject.generator;
 
 import java.util.ArrayList;
 import java.util.Collection;

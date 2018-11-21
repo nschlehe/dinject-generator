@@ -1,4 +1,4 @@
-package io.kanuka.generator;
+package io.dinject.generator;
 
 import org.junit.Test;
 

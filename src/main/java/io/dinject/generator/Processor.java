@@ -1,8 +1,8 @@
-package io.kanuka.generator;
+package io.dinject.generator;
 
-import io.kanuka.ContextModule;
-import io.kanuka.Factory;
-import io.kanuka.core.DependencyMeta;
+import io.dinject.ContextModule;
+import io.dinject.Factory;
+import io.dinject.core.DependencyMeta;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;

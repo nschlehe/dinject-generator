@@ -1,4 +1,4 @@
-package io.kanuka.generator;
+package io.dinject.generator;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;

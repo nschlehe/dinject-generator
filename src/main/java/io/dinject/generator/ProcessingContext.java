@@ -1,4 +1,4 @@
-package io.kanuka.generator;
+package io.dinject.generator;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.FilerException;

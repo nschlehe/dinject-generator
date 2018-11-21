@@ -1,7 +1,7 @@
-package io.kanuka.generator;
+package io.dinject.generator;
 
-import io.kanuka.Bean;
-import io.kanuka.Factory;
+import io.dinject.Bean;
+import io.dinject.Factory;
 
 import javax.annotation.Generated;
 import javax.annotation.PostConstruct;

@@ -1,6 +1,6 @@
-package io.kanuka.generator;
+package io.dinject.generator;
 
-import io.kanuka.core.DependencyMeta;
+import io.dinject.core.DependencyMeta;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -88,13 +88,6 @@ class MetaData {
     }
     // ignore Beans from @Bean factory methods
     return null;
-  }
-
-  private boolean higherPackage(String interfacePackage, String topPackage) {
-    if (interfacePackage.length() > topPackage.length()){
-      return false;
-    }
-    return topPackage.startsWith(interfacePackage);
   }
 
   void addImportTypes(Set<String> importTypes) {

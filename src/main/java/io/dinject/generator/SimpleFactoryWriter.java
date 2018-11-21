@@ -1,4 +1,4 @@
-package io.kanuka.generator;
+package io.dinject.generator;
 
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
