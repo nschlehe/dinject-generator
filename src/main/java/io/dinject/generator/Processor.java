@@ -215,7 +215,7 @@ public class Processor extends AbstractProcessor {
         Element element = iterator.next();
         ContextModule annotation = element.getAnnotation(ContextModule.class);
         if (annotation != null) {
-          processingContext.setContextDetails(annotation.name(), annotation.dependsOn(), element);
+          processingContext.setContextDetails(annotation.name(), annotation.provides(), annotation.dependsOn(), element);
         }
       }
     }
@@ -229,7 +229,7 @@ public class Processor extends AbstractProcessor {
   private void readFactory(TypeElement factoryType) {
 
     ContextModule module = factoryType.getAnnotation(ContextModule.class);
-    processingContext.setContextDetails(module.name(), module.dependsOn(), factoryType);
+    processingContext.setContextDetails(module.name(), module.provides(), module.dependsOn(), factoryType);
 
     List<? extends Element> elements = factoryType.getEnclosedElements();
     if (elements != null) {

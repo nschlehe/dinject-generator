@@ -65,7 +65,6 @@ class SimpleFactoryWriter {
       e.printStackTrace();
       processingContext.logError("Failed to write services file " + e.getMessage());
     }
-
   }
 
   private void writeBuildMethods() {
@@ -101,27 +100,18 @@ class SimpleFactoryWriter {
     for (String type : ordering.getImportTypes()) {
       writer.append("import %s;", type).eol();
     }
-
     writer.eol();
   }
 
   private void writeStartClass() {
 
-    String dependsAnnotation = "";
-    String dependsBuilder = "";
+    processingContext.buildAtContextModule(writer);
 
-    String dependsOn = moduleDependsOn();
-    if (dependsOn != null) {
-      dependsAnnotation = " ,dependsOn = {" + dependsOn + "}";
-      dependsBuilder = "," + dependsOn;
-    }
-
-    writer.append("@ContextModule(name=\"%s\"%s)", contextName, dependsAnnotation).eol();
     writer.append("public class %s implements BeanContextFactory {", factoryShortName).eol().eol();
     writer.append("  private final Builder builder;").eol().eol();
 
     writer.append("  public %s() {", factoryShortName).eol();
-    writer.append("    this.builder = BuilderFactory.newBuilder(\"%s\"%s);", contextName, dependsBuilder).eol();
+    processingContext.buildNewBuilder(writer, contextName);
     writer.append("  }").eol().eol();
 
     writer.append("  @Override").eol();
@@ -130,25 +120,14 @@ class SimpleFactoryWriter {
     writer.append("  }").eol().eol();
 
     writer.append("  @Override").eol();
+    writer.append("  public String[] getProvides() {").eol();
+    writer.append("    return builder.getProvides();").eol();
+    writer.append("  }").eol().eol();
+
+    writer.append("  @Override").eol();
     writer.append("  public String[] getDependsOn() {").eol();
     writer.append("    return builder.getDependsOn();").eol();
     writer.append("  }").eol().eol();
-  }
-
-  private String moduleDependsOn() {
-    String[] contextDependsOn = processingContext.getContextDependsOn();
-    if (contextDependsOn == null || contextDependsOn.length == 0) {
-      return null;
-    }
-    StringBuilder dependsOn = new StringBuilder();
-    int c = 0;
-    for (String moduleDependency : contextDependsOn) {
-      if (c > 0) {
-        dependsOn.append(",");
-      }
-      dependsOn.append("\"").append(moduleDependency).append("\"");
-    }
-    return dependsOn.toString();
   }
 
   private void writeEndClass() {

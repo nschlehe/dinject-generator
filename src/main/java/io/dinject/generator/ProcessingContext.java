@@ -31,6 +31,8 @@ class ProcessingContext {
 
   private String contextName;
 
+  private String[] contextProvides;
+
   private String[] contextDependsOn;
 
   private String contextPackage;
@@ -111,8 +113,9 @@ class ProcessingContext {
     return filer.createResource(StandardLocation.CLASS_OUTPUT, "", Constants.META_INF_FACTORY);
   }
 
-  void setContextDetails(String name, String[] dependsOn, Element contextElement) {
+  void setContextDetails(String name, String[] provides, String[] dependsOn, Element contextElement) {
     this.contextName = name;
+    this.contextProvides = provides;
     this.contextDependsOn = dependsOn;
 
     // determine the context package (that we put the $diFactory class into)
@@ -125,10 +128,6 @@ class ProcessingContext {
     return contextName;
   }
 
-  String[] getContextDependsOn() {
-    return contextDependsOn;
-  }
-
   String getContextPackage() {
     return contextPackage;
   }
@@ -136,4 +135,51 @@ class ProcessingContext {
   Element asElement(TypeMirror returnType) {
     return typeUtils.asElement(returnType);
   }
+
+  void buildNewBuilder(Append writer, String contextName) {
+    writer.append("    this.builder = BuilderFactory.newBuilder(\"%s\"", contextName);
+    writer.append(",");
+    buildStringArray(writer, contextProvides, true);
+    writer.append(",");
+    buildStringArray(writer, contextDependsOn, true);
+    writer.append(");").eol();
+  }
+
+  void buildAtContextModule(Append writer) {
+    writer.append("@ContextModule(name=\"%s\"", contextName);
+    if (!isEmpty(contextProvides)) {
+      writer.append(", provides=");
+      buildStringArray(writer, contextProvides, false);
+    }
+    if (!isEmpty(contextDependsOn)) {
+      writer.append(", dependsOn=");
+      buildStringArray(writer, contextDependsOn, false);
+    }
+    writer.append(")").eol();
+  }
+
+  private boolean isEmpty(String[] strings) {
+    return strings == null || strings.length == 0;
+  }
+
+  private void buildStringArray(Append writer, String[] values, boolean asArray) {
+
+    if (isEmpty(values)) {
+      writer.append("null");
+    } else {
+      if (asArray) {
+        writer.append("new String[]");
+      }
+      writer.append("{");
+      int c = 0;
+      for (String value : values) {
+        if (c++ > 0) {
+          writer.append(",");
+        }
+        writer.append("\"").append(value).append("\"");
+      }
+      writer.append("}");
+    }
+  }
+
 }
