@@ -16,7 +16,6 @@ class SimpleFactoryWriter {
   private final String factoryPackage;
   private final String factoryShortName;
   private final String factoryFullName;
-  private final String contextName;
 
   private Append writer;
 
@@ -26,14 +25,9 @@ class SimpleFactoryWriter {
 
     String pkg = processingContext.getContextPackage();
     this.factoryPackage = (pkg != null) ? pkg : ordering.getTopPackage();
-    this.contextName = deriveContextName();
+    processingContext.deriveContextName(factoryPackage);
     this.factoryShortName = "_di$Factory";
     this.factoryFullName = factoryPackage + "." + factoryShortName;
-  }
-
-  private String deriveContextName() {
-    String name = processingContext.getContextName();
-    return (name != null) ? name : factoryPackage;
   }
 
   void write() throws IOException {
@@ -111,7 +105,7 @@ class SimpleFactoryWriter {
     writer.append("  private final Builder builder;").eol().eol();
 
     writer.append("  public %s() {", factoryShortName).eol();
-    processingContext.buildNewBuilder(writer, contextName);
+    processingContext.buildNewBuilder(writer);
     writer.append("  }").eol().eol();
 
     writer.append("  @Override").eol();

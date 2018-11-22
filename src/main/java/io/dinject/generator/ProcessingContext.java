@@ -124,8 +124,10 @@ class ProcessingContext {
     this.contextPackage = (pkg == null) ? null : pkg.getQualifiedName().toString();
   }
 
-  String getContextName() {
-    return contextName;
+  void deriveContextName(String factoryPackage) {
+    if (contextName == null) {
+      contextName = factoryPackage;
+    }
   }
 
   String getContextPackage() {
@@ -136,7 +138,7 @@ class ProcessingContext {
     return typeUtils.asElement(returnType);
   }
 
-  void buildNewBuilder(Append writer, String contextName) {
+  void buildNewBuilder(Append writer) {
     writer.append("    this.builder = BuilderFactory.newBuilder(\"%s\"", contextName);
     writer.append(",");
     buildStringArray(writer, contextProvides, true);
