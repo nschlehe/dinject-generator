@@ -8,7 +8,7 @@ public class Constants {
   public static final String PATH = "io.dinject.controller.Path";
   public static final String CONTROLLER = "io.dinject.controller.Controller";
 
-  public static final String AT_GENERATED = "@Generated(\"io.dinject\")";
+  public static final String AT_GENERATED = "@Generated(\"io.dinject.generator\")";
   public static final String META_INF_FACTORY = "META-INF/services/io.dinject.core.BeanContextFactory";
 
   public static final String BEAN_LIFECYCLE = "io.dinject.core.BeanLifecycle";
@@ -21,4 +21,7 @@ public class Constants {
   public static final String IMPORT_BUILDER = "import io.dinject.core.Builder;";
   public static final String IMPORT_DEPENDENCYMETA = "import io.dinject.core.DependencyMeta;";
 
+  static boolean isBeanLifecycle(String type) {
+    return BEAN_LIFECYCLE.equals(type);
+  }
 }

@@ -45,8 +45,8 @@ class SimpleBeanWriter {
     writeStaticFactoryMethod();
     writeStaticFactoryBeanMethods();
 
-    writeConstructor();
-    writeLifecycleMethods();
+    writeLifecycleWrapper();
+    writeStaticFactoryBeanLifecycle();
     writeClassEnd();
 
     writer.close();
@@ -55,6 +55,12 @@ class SimpleBeanWriter {
   private void writeStaticFactoryBeanMethods() {
     for (MethodReader factoryMethod : beanReader.getFactoryMethods()) {
       writeFactoryBeanMethod(factoryMethod);
+    }
+  }
+
+  private void writeStaticFactoryBeanLifecycle() {
+    for (MethodReader factoryMethod : beanReader.getFactoryMethods()) {
+      factoryMethod.buildLifecycleClass(writer);
     }
   }
 
@@ -105,7 +111,7 @@ class SimpleBeanWriter {
     writer.append(beanReader.getInterfacesAndAnnotations()).append(");").eol();
 
     if (beanReader.isLifecycleRequired()) {
-      writer.append("      builder.addLifecycle(new %s$di(bean));", shortName).eol();
+      beanReader.buildAddLifecycle(writer);
     }
     if (beanReader.isFieldInjectionRequired()) {
       writer.append("      builder.addInjector(b -> {").eol();
@@ -124,13 +130,6 @@ class SimpleBeanWriter {
     beanReader.writeImports(writer);
   }
 
-  private void writeLifecycleMethods() {
-    if (beanReader.isLifecycleRequired()) {
-      lifecycleMethod("postConstruct", beanReader.getPostConstructMethod());
-      lifecycleMethod("preDestroy", beanReader.getPreDestroyMethod());
-    }
-  }
-
   private void lifecycleMethod(String method, Element methodElement) {
     writer.append("  @Override").eol();
     writer.append("  public void %s() {", method).eol();
@@ -143,12 +142,15 @@ class SimpleBeanWriter {
     writer.append("  }").eol().eol();
   }
 
-  private void writeConstructor() {
-    if (beanReader.isLifecycleRequired()) {
+  private void writeLifecycleWrapper() {
+    if (beanReader.isLifecycleWrapperRequired()) {
       writer.append("  private final %s bean;", shortName).eol().eol();
       writer.append("  public %s$di(%s bean) {", shortName, shortName).eol();
       writer.append("    this.bean = bean;").eol();
       writer.append("  }").eol().eol();
+
+      lifecycleMethod("postConstruct", beanReader.getPostConstructMethod());
+      lifecycleMethod("preDestroy", beanReader.getPreDestroyMethod());
     }
   }
 
@@ -159,7 +161,7 @@ class SimpleBeanWriter {
   private void writeClassStart() {
     writer.append(Constants.AT_GENERATED).eol();
     writer.append("public class ").append(shortName).append("$di ");
-    if (beanReader.isLifecycleRequired()) {
+    if (beanReader.isLifecycleWrapperRequired()) {
       writer.append("implements BeanLifecycle ");
     }
     writer.append(" {").eol().eol();

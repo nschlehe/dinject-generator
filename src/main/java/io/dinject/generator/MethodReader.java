@@ -1,5 +1,7 @@
 package io.dinject.generator;
 
+import io.dinject.Bean;
+
 import javax.inject.Named;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -18,23 +20,30 @@ class MethodReader {
   private final String factoryType;
   private final TypeMirror returnType;
   private final String returnTypeRaw;
+  private final String shortName;
   private final boolean isVoid;
   private final List<MethodParam> params = new ArrayList<>();
 
   private final List<String> interfaceTypes = new ArrayList<>();
   private final String factoryShortName;
   private final boolean isFactory;
+  private final String initMethod;
+  private final String destroyMethod;
   private String addForType;
+  private boolean beanLifeCycle;
 
-  MethodReader(ProcessingContext processingContext, ExecutableElement element, TypeElement beanType, boolean isFactory) {
-    this.isFactory = isFactory;
+  MethodReader(ProcessingContext processingContext, ExecutableElement element, TypeElement beanType, Bean bean) {
+    this.isFactory = bean != null;
     this.processingContext = processingContext;
     this.element = element;
     this.returnType = element.getReturnType();
     this.returnTypeRaw = returnType.toString();
+    this.shortName = Util.shortName(returnTypeRaw);
     this.factoryType = beanType.getQualifiedName().toString();
     this.factoryShortName = Util.shortName(factoryType);
     this.isVoid = returnTypeRaw.equals("void");
+    this.initMethod = (bean == null) ? null : bean.initMethod();
+    this.destroyMethod = (bean == null) ? null : bean.destroyMethod();
 
     initInterfaces();
   }
@@ -47,7 +56,12 @@ class MethodReader {
         interfaceTypes.add(te.getQualifiedName().toString());
       }
       for (TypeMirror anInterface : te.getInterfaces()) {
-        interfaceTypes.add(anInterface.toString());
+        if (Constants.isBeanLifecycle(anInterface.toString())) {
+          // directly implements BeanLifecycle
+          beanLifeCycle = true;
+        } else {
+          interfaceTypes.add(anInterface.toString());
+        }
       }
       if (interfaceTypes.size() == 1) {
         addForType = interfaceTypes.get(0);
@@ -121,6 +135,19 @@ class MethodReader {
       }
       writer.append(");").eol();
     }
+    if (beanLifeCycle) {
+      writer.append("      builder.addLifecycle(bean);").eol();
+    } else if (hasLifecycleMethods()) {
+      writer.append("      builder.addLifecycle(new %s$lifecycle(bean));", shortName).eol();
+    }
+  }
+
+  private boolean hasLifecycleMethods() {
+    return notEmpty(initMethod) || notEmpty(destroyMethod);
+  }
+
+  private boolean notEmpty(String value) {
+    return value != null && !value.isEmpty();
   }
 
   void addImports(Set<String> importTypes) {
@@ -129,6 +156,9 @@ class MethodReader {
     }
     if (isFactory) {
       importTypes.add(returnTypeRaw);
+    }
+    if (beanLifeCycle || hasLifecycleMethods()) {
+      importTypes.add(Constants.BEAN_LIFECYCLE);
     }
   }
 
@@ -141,9 +171,44 @@ class MethodReader {
     if (isVoid) {
       writer.append("Void.class)) {").eol();
     } else {
-      writer.append(Util.shortName(returnTypeRaw)).append(".class)) {").eol();
+      writer.append(shortName).append(".class)) {").eol();
     }
   }
+
+  /**
+   * Add a $lifecycle class for factory method bean that has initMethod or destroyMethod.
+   */
+  void buildLifecycleClass(Append writer) {
+    if (!hasLifecycleMethods()) {
+      return;
+    }
+
+    writer.append("  static class %s$lifecycle implements BeanLifecycle {", shortName).eol().eol();
+    writer.append("    final %s bean;", shortName).eol().eol();
+    writer.append("    %s$lifecycle(%s bean) {", shortName, shortName).eol();
+    writer.append("      this.bean = bean;").eol();
+    writer.append("    }").eol().eol();
+
+    writer.append("    @Override").eol();
+    writer.append("    public void postConstruct() {").eol();
+    if (notEmpty(initMethod)) {
+      writer.append("      bean.%s();", initMethod).eol();
+    } else {
+      writer.append("      // do nothing ").eol();
+    }
+    writer.append("    }").eol().eol();
+
+    writer.append("    @Override").eol();
+    writer.append("    public void preDestroy() {").eol();
+    if (notEmpty(destroyMethod)) {
+      writer.append("      bean.%s();", destroyMethod).eol();
+    } else {
+      writer.append("      // do nothing ").eol();
+    }
+    writer.append("    }").eol();
+    writer.append("  }").eol().eol();
+  }
+
 
   static class MethodParam {
 

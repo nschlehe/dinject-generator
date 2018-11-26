@@ -70,18 +70,16 @@ class BeanReader {
 
   private boolean writtenToFile;
 
+  /**
+   * Set to true when the bean directly implements BeanLifecycle.
+   */
+  private boolean beanLifeCycle;
+
   BeanReader(TypeElement beanType, ProcessingContext processingContext) {
     this.beanType = beanType;
     this.shortName = beanType.getSimpleName().toString();
     this.processingContext = processingContext;
     initInterfaces();
-    initAddFor();
-  }
-
-  private void initAddFor() {
-    if (interfaceTypes.size() == 1) {
-      addForType = Util.shortName(Util.unwrapProvider(interfaceTypes.get(0)));
-    }
   }
 
   private void initInterfaces() {
@@ -90,9 +88,16 @@ class BeanReader {
 
     for (TypeMirror anInterface : beanType.getInterfaces()) {
       String type = Util.unwrapProvider(anInterface.toString());
-      interfaceTypes.add(type);
-      importTypes.add(type);
-      sb.append(", ").append(Util.shortName(type)).append(".class");
+      if (Constants.isBeanLifecycle(type)) {
+        beanLifeCycle = true;
+      } else {
+        interfaceTypes.add(type);
+        importTypes.add(type);
+        sb.append(", ").append(Util.shortName(type)).append(".class");
+      }
+    }
+    if (interfaceTypes.size() == 1) {
+      addForType = Util.shortName(interfaceTypes.get(0));
     }
 
     // get class level annotations (that are not Named and Singleton)
@@ -209,7 +214,7 @@ class BeanReader {
 
     ExecutableElement ex = (ExecutableElement) element;
 
-    MethodReader methodReader = new MethodReader(processingContext, ex, beanType, false);
+    MethodReader methodReader = new MethodReader(processingContext, ex, beanType, null);
     methodReader.read();
 
     Inject inject = element.getAnnotation(Inject.class);
@@ -231,9 +236,9 @@ class BeanReader {
 
     ExecutableElement methodElement = (ExecutableElement) element;
     if (factory) {
-      Bean beanMarker = element.getAnnotation(Bean.class);
-      if (beanMarker != null) {
-        addFactoryMethod(methodElement);
+      Bean bean = element.getAnnotation(Bean.class);
+      if (bean != null) {
+        addFactoryMethod(methodElement, bean);
       }
     }
 
@@ -248,8 +253,8 @@ class BeanReader {
     }
   }
 
-  private void addFactoryMethod(ExecutableElement methodElement) {
-    MethodReader methodReader = new MethodReader(processingContext, methodElement, beanType, true);
+  private void addFactoryMethod(ExecutableElement methodElement, Bean bean) {
+    MethodReader methodReader = new MethodReader(processingContext, methodElement, beanType, bean);
     methodReader.read();
     factoryMethods.add(methodReader);
   }
@@ -259,6 +264,13 @@ class BeanReader {
   }
 
   boolean isLifecycleRequired() {
+    return beanLifeCycle || isLifecycleWrapperRequired();
+  }
+
+  /**
+   * Return true if lifecycle via annotated methods is required.
+   */
+  boolean isLifecycleWrapperRequired() {
     return postConstructMethod != null || preDestroyMethod != null;
   }
 
@@ -292,8 +304,18 @@ class BeanReader {
     writer.append(shortName).append(".class)) {").eol();
   }
 
+  void buildAddLifecycle(Append writer) {
+    writer.append("      builder.addLifecycle(");
+    if (beanLifeCycle) {
+      writer.append("bean");
+    } else {
+      writer.append("new %s$di(bean)", shortName);
+    }
+    writer.append(");").eol();
+  }
+
   private Set<String> importTypes() {
-    if (isLifecycleRequired()) {
+    if (isLifecycleWrapperRequired()) {
       importTypes.add(Constants.BEAN_LIFECYCLE);
     }
     importTypes.add(Constants.GENERATED);
@@ -320,4 +342,5 @@ class BeanReader {
   void setWrittenToFile() {
     this.writtenToFile = true;
   }
+
 }
