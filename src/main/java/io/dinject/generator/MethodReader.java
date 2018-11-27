@@ -2,7 +2,6 @@ package io.dinject.generator;
 
 import io.dinject.Bean;
 
-import javax.inject.Named;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -218,10 +217,10 @@ class MethodReader {
     private final boolean optionalType;
     private final String paramType;
 
-    MethodParam(VariableElement p) {
-      TypeMirror type = p.asType();
+    MethodParam(VariableElement param) {
+      TypeMirror type = param.asType();
       this.rawType = type.toString();
-      this.named = readNamed(p);
+      this.named = Util.getNamed(param);
       this.listType = Util.isList(rawType);
       this.optionalType = !listType && Util.isOptional(rawType);
       if (optionalType) {
@@ -231,11 +230,6 @@ class MethodReader {
       } else {
         paramType = rawType;
       }
-    }
-
-    private String readNamed(VariableElement p) {
-      Named named = p.getAnnotation(Named.class);
-      return (named == null) ? null : named.value();
     }
 
     String builderGetDependency() {

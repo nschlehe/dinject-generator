@@ -1,6 +1,5 @@
 package io.dinject.generator;
 
-import javax.inject.Named;
 import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeMirror;
 
@@ -12,12 +11,7 @@ class FieldReader {
 
   FieldReader(Element element) {
     this.element = element;
-    this.name = readName();
-  }
-
-  private String readName() {
-    Named named = element.getAnnotation(Named.class);
-    return (named == null) ? null : named.value();
+    this.name = Util.getNamed(element);
   }
 
   String getFieldName() {

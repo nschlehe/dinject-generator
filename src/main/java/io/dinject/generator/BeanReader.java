@@ -8,12 +8,14 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.inject.Qualifier;
 import javax.inject.Singleton;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,7 +42,7 @@ class BeanReader {
 
   private final TypeElement beanType;
 
-  private final ProcessingContext processingContext;
+  private final ProcessingContext context;
 
   private final String shortName;
 
@@ -75,14 +77,14 @@ class BeanReader {
    */
   private boolean beanLifeCycle;
 
-  BeanReader(TypeElement beanType, ProcessingContext processingContext) {
+  BeanReader(TypeElement beanType, ProcessingContext context) {
     this.beanType = beanType;
     this.shortName = beanType.getSimpleName().toString();
-    this.processingContext = processingContext;
-    initInterfaces();
+    this.context = context;
+    init();
   }
 
-  private void initInterfaces() {
+  private void init() {
 
     StringBuilder sb = new StringBuilder();
 
@@ -102,11 +104,22 @@ class BeanReader {
 
     // get class level annotations (that are not Named and Singleton)
     for (AnnotationMirror annotationMirror : beanType.getAnnotationMirrors()) {
-      String annotationType = annotationMirror.getAnnotationType().toString();
-      if (includeAnnotation(annotationType)) {
-        importTypes.add(annotationType);
-        sb.append(", ").append(Util.shortName(annotationType)).append(".class");
+
+      DeclaredType annotationType = annotationMirror.getAnnotationType();
+      Qualifier qualifier = annotationType.asElement().getAnnotation(Qualifier.class);
+      String annType = annotationType.toString();
+      if (qualifier != null) {
+        this.name = Util.shortName(annType);
+      } else {
+        if (includeAnnotation(annType)) {
+          importTypes.add(annType);
+          sb.append(", ").append(Util.shortName(annType)).append(".class");
+        }
       }
+    }
+    Named named = beanType.getAnnotation(Named.class);
+    if (named != null) {
+      this.name = named.value();
     }
 
     registrationTypes = sb.toString();
@@ -133,8 +146,6 @@ class BeanReader {
   }
 
   void read(boolean factory) {
-
-    readNamed();
 
     for (Element element : beanType.getEnclosedElements()) {
       ElementKind kind = element.getKind();
@@ -203,18 +214,11 @@ class BeanReader {
     return !EXCLUDED_ANNOTATIONS.contains(annotationType);
   }
 
-  private void readNamed() {
-    Named named = beanType.getAnnotation(Named.class);
-    if (named != null) {
-      this.name = named.value();
-    }
-  }
-
   private void readConstructor(Element element) {
 
     ExecutableElement ex = (ExecutableElement) element;
 
-    MethodReader methodReader = new MethodReader(processingContext, ex, beanType, null);
+    MethodReader methodReader = new MethodReader(context, ex, beanType, null);
     methodReader.read();
 
     Inject inject = element.getAnnotation(Inject.class);
@@ -254,7 +258,7 @@ class BeanReader {
   }
 
   private void addFactoryMethod(ExecutableElement methodElement, Bean bean) {
-    MethodReader methodReader = new MethodReader(processingContext, methodElement, beanType, bean);
+    MethodReader methodReader = new MethodReader(context, methodElement, beanType, bean);
     methodReader.read();
     factoryMethods.add(methodReader);
   }
