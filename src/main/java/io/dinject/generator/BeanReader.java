@@ -2,6 +2,8 @@ package io.dinject.generator;
 
 import io.dinject.Bean;
 import io.dinject.Factory;
+import io.dinject.Primary;
+import io.dinject.Secondary;
 
 import javax.annotation.Generated;
 import javax.annotation.PostConstruct;
@@ -36,6 +38,8 @@ class BeanReader {
     EXCLUDED_ANNOTATIONS.add(Named.class.getName());
     EXCLUDED_ANNOTATIONS.add(Factory.class.getName());
     EXCLUDED_ANNOTATIONS.add(Generated.class.getName());
+    EXCLUDED_ANNOTATIONS.add(Primary.class.getName());
+    EXCLUDED_ANNOTATIONS.add(Secondary.class.getName());
     EXCLUDED_ANNOTATIONS.add(Constants.KOTLIN_METADATA);
     EXCLUDED_ANNOTATIONS.add(Constants.PATH);
   }
@@ -76,6 +80,8 @@ class BeanReader {
    * Set to true when the bean directly implements BeanLifecycle.
    */
   private boolean beanLifeCycle;
+  private boolean primary;
+  private boolean secondary;
 
   BeanReader(TypeElement beanType, ProcessingContext context) {
     this.beanType = beanType;
@@ -122,6 +128,8 @@ class BeanReader {
       this.name = named.value();
     }
 
+    primary = (beanType.getAnnotation(Primary.class) != null);
+    secondary = !primary && (beanType.getAnnotation(Secondary.class) != null);
     registrationTypes = sb.toString();
   }
 
@@ -306,6 +314,19 @@ class BeanReader {
       writer.append(addForType).append(".class, ");
     }
     writer.append(shortName).append(".class)) {").eol();
+  }
+
+  void buildRegister(Append writer) {
+
+    String flags = primary ? "Primary" : secondary ? "Secondary" : "";
+    writer.append("      builder.register%s(bean, ", flags);
+    if (name == null) {
+      writer.append("null");
+    } else {
+      writer.append("\"%s\"", name);
+    }
+    // add interfaces and annotations
+    writer.append(getInterfacesAndAnnotations()).append(");").eol();
   }
 
   void buildAddLifecycle(Append writer) {

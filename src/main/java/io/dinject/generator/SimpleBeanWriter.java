@@ -98,18 +98,7 @@ class SimpleBeanWriter {
     }
     writer.append(");").eol();
 
-    //builder.addBean(bean, null, "coffee.Controller");
-    writer.append("      builder.register(bean, ");
-    String name = beanReader.getName();
-    if (name == null) {
-      writer.append("null");
-    } else {
-      writer.append("\"%s\"", name);
-    }
-
-    // add interfaces and annotations
-    writer.append(beanReader.getInterfacesAndAnnotations()).append(");").eol();
-
+    beanReader.buildRegister(writer);
     if (beanReader.isLifecycleRequired()) {
       beanReader.buildAddLifecycle(writer);
     }
