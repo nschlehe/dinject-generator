@@ -140,14 +140,15 @@ class ProcessingContext {
 
   void buildNewBuilder(Append writer) {
     writer.append("    this.builder = BuilderFactory.newBuilder(\"%s\"", contextName);
-    writer.append(",");
+    writer.append(", ");
     buildStringArray(writer, contextProvides, true);
-    writer.append(",");
+    writer.append(", ");
     buildStringArray(writer, contextDependsOn, true);
     writer.append(");").eol();
   }
 
   void buildAtContextModule(Append writer) {
+    writer.append(Constants.AT_GENERATED).eol();
     writer.append("@ContextModule(name=\"%s\"", contextName);
     if (!isEmpty(contextProvides)) {
       writer.append(", provides=");

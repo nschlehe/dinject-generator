@@ -115,7 +115,7 @@ class MetaData {
     sb.append(")").append(NEWLINE);
 
     String shortName = Util.shortName(type);
-    sb.append("  protected void build").append(shortName).append("() {").append(NEWLINE);
+    sb.append("  protected void build_").append(shortName).append("() {").append(NEWLINE);
     if (hasMethod()) {
       sb.append("    ").append(Util.shortMethod(method)).append("(builder);").append(NEWLINE);
     } else {

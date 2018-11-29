@@ -73,7 +73,7 @@ class SimpleFactoryWriter {
     writer.append("  public BeanContext createContext(Builder parent) {").eol();
     writer.append("    builder.setParent(parent);").eol();
     for (MetaData metaData : ordering.getOrdered()) {
-      writer.append("    build%s();", metaData.getShortType()).eol();
+      writer.append("    build_%s();", metaData.getShortType()).eol();
     }
     writer.append("    return builder.build();").eol();
     writer.append("  }").eol();
@@ -84,6 +84,7 @@ class SimpleFactoryWriter {
 
     writer.append("package %s;", factoryPackage).eol().eol();
 
+    writer.append(Constants.IMPORT_GENERATED).eol();
     writer.append(Constants.IMPORT_BEANCONTEXT).eol();
     writer.append(Constants.IMPORT_CONTEXTMODULE).eol();
     writer.append(Constants.IMPORT_BEANCONTEXTFACTORY).eol();
