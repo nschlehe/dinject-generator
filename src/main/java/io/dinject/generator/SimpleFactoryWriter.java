@@ -84,7 +84,9 @@ class SimpleFactoryWriter {
 
     writer.append("package %s;", factoryPackage).eol().eol();
 
-    writer.append(Constants.IMPORT_GENERATED).eol();
+    if (processingContext.isGeneratedAvailable()) {
+      writer.append(Constants.IMPORT_GENERATED).eol();
+    }
     writer.append(Constants.IMPORT_BEANCONTEXT).eol();
     writer.append(Constants.IMPORT_CONTEXTMODULE).eol();
     writer.append(Constants.IMPORT_BEANCONTEXTFACTORY).eol();

@@ -343,7 +343,9 @@ class BeanReader {
     if (isLifecycleWrapperRequired()) {
       importTypes.add(Constants.BEAN_LIFECYCLE);
     }
-    importTypes.add(Constants.GENERATED);
+    if (context.isGeneratedAvailable()) {
+      importTypes.add(Constants.GENERATED);
+    }
     importTypes.add(Constants.BUILDER);
     importTypes.add(beanType.getQualifiedName().toString());
     return importTypes;

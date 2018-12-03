@@ -18,6 +18,8 @@ import java.io.IOException;
 import java.io.LineNumberReader;
 import java.io.Reader;
 
+import static io.dinject.generator.Constants.GENERATED;
+
 class ProcessingContext {
 
 
@@ -28,6 +30,7 @@ class ProcessingContext {
   private final Filer filer;
   private final Elements elementUtils;
   private final Types typeUtils;
+  private final boolean generatedAvailable;
 
   private String contextName;
 
@@ -45,6 +48,15 @@ class ProcessingContext {
     this.filer = processingEnv.getFiler();
     this.elementUtils = processingEnv.getElementUtils();
     this.typeUtils = processingEnv.getTypeUtils();
+    this.generatedAvailable = isTypeAvailable(GENERATED);
+  }
+
+  private boolean isTypeAvailable(String canonicalName) {
+    return null != elementUtils.getTypeElement(canonicalName);
+  }
+
+  boolean isGeneratedAvailable() {
+    return generatedAvailable;
   }
 
   /**
@@ -148,7 +160,9 @@ class ProcessingContext {
   }
 
   void buildAtContextModule(Append writer) {
-    writer.append(Constants.AT_GENERATED).eol();
+    if (isGeneratedAvailable()) {
+      writer.append(Constants.AT_GENERATED).eol();
+    }
     writer.append("@ContextModule(name=\"%s\"", contextName);
     if (!isEmpty(contextProvides)) {
       writer.append(", provides=");

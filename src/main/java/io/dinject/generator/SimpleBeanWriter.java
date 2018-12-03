@@ -148,7 +148,9 @@ class SimpleBeanWriter {
   }
 
   private void writeClassStart() {
-    writer.append(Constants.AT_GENERATED).eol();
+    if (ctx.isGeneratedAvailable()) {
+      writer.append(Constants.AT_GENERATED).eol();
+    }
     writer.append("public class ").append(shortName).append("$di ");
     if (beanReader.isLifecycleWrapperRequired()) {
       writer.append("implements BeanLifecycle ");
