@@ -4,6 +4,7 @@ class Constants {
 
   static final String KOTLIN_METADATA = "kotlin.Metadata";
   static final String GENERATED = "javax.annotation.Generated";
+  static final String POSTCONSTRUCT = "javax.annotation.PostConstruct";
 
   static final String PATH = "io.dinject.controller.Path";
   static final String CONTROLLER = "io.dinject.controller.Controller";

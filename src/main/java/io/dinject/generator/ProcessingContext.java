@@ -17,8 +17,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.io.Reader;
+import java.nio.file.NoSuchFileException;
 
 import static io.dinject.generator.Constants.GENERATED;
+import static io.dinject.generator.Constants.POSTCONSTRUCT;
 
 class ProcessingContext {
 
@@ -53,6 +55,10 @@ class ProcessingContext {
 
   private boolean isTypeAvailable(String canonicalName) {
     return null != elementUtils.getTypeElement(canonicalName);
+  }
+
+  boolean isPostConstructAvailable() {
+    return isTypeAvailable(POSTCONSTRUCT);
   }
 
   boolean isGeneratedAvailable() {
@@ -98,7 +104,7 @@ class ProcessingContext {
         }
       }
 
-    } catch (FileNotFoundException e) {
+    } catch (FileNotFoundException | NoSuchFileException e ) {
       // logDebug("no services file yet");
 
     } catch (FilerException e) {

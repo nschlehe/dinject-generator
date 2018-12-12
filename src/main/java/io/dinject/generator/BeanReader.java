@@ -34,10 +34,10 @@ class BeanReader {
   private static Set<String> EXCLUDED_ANNOTATIONS = new HashSet<>();
 
   static {
+    EXCLUDED_ANNOTATIONS.add("javax.annotation.Generated");
     EXCLUDED_ANNOTATIONS.add(Singleton.class.getName());
     EXCLUDED_ANNOTATIONS.add(Named.class.getName());
     EXCLUDED_ANNOTATIONS.add(Factory.class.getName());
-    EXCLUDED_ANNOTATIONS.add(Generated.class.getName());
     EXCLUDED_ANNOTATIONS.add(Primary.class.getName());
     EXCLUDED_ANNOTATIONS.add(Secondary.class.getName());
     EXCLUDED_ANNOTATIONS.add(Constants.KOTLIN_METADATA);
@@ -254,14 +254,16 @@ class BeanReader {
       }
     }
 
-    PostConstruct pcMarker = element.getAnnotation(PostConstruct.class);
-    if (pcMarker != null) {
-      postConstructMethod = element;
-    }
+    if (context.isPostConstructAvailable()) {
+      PostConstruct pcMarker = element.getAnnotation(PostConstruct.class);
+      if (pcMarker != null) {
+        postConstructMethod = element;
+      }
 
-    PreDestroy pdMarker = element.getAnnotation(PreDestroy.class);
-    if (pdMarker != null) {
-      preDestroyMethod = element;
+      PreDestroy pdMarker = element.getAnnotation(PreDestroy.class);
+      if (pdMarker != null) {
+        preDestroyMethod = element;
+      }
     }
   }
 
