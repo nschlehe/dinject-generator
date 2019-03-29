@@ -54,7 +54,11 @@ class Util {
   }
 
   static String extractList(String rawType) {
-    return rawType.substring(15, rawType.length() - 1);
+    String listType = rawType.substring(15, rawType.length() - 1);
+    if (listType.startsWith("? extends")) {
+      return listType.substring(10);
+    }
+    return listType;
   }
 
   static boolean isList(String rawType) {
